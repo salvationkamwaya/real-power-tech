@@ -51,7 +51,7 @@ export function AdminHeader({ title, onMenuClick }) {
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
         >
-          {user?.email ?? "operator@realpowertech.com"}
+          {user?.name ?? "operator@realpowertech.com"}
         </button>
         {open && (
           <div

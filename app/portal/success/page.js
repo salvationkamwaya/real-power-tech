@@ -32,10 +32,9 @@ export default function PortalSuccessPage() {
             <path d="M20 6L9 17l-5-5" />
           </svg>
         </div>
-        <h1 className="text-3xl font-semibold mb-2">You are connected!</h1>
+        <h1 className="text-3xl font-semibold mb-2">Payment successful</h1>
         <p className="text-muted-foreground">
-          Your session is valid for {duration}. You can now close this page and
-          browse the internet.
+          Thank you. Your purchase was completed. Session duration: {duration}.
         </p>
       </div>
     </div>

@@ -19,11 +19,11 @@ export default function AdminLayout({ children }) {
   const title = useMemo(() => {
     if (!pathname) return "";
     if (pathname.startsWith("/admin/dashboard")) return "Dashboard";
-    if (pathname.startsWith("/admin/partners")) return "Partner Management";
+    if (pathname.startsWith("/admin/partners")) return "Partners";
     if (pathname.startsWith("/admin/devices"))
-      return "Device & Location Management";
-    if (pathname.startsWith("/admin/packages")) return "Service Packages";
-    if (pathname.startsWith("/admin/reports")) return "Financial Reports";
+      return "Devices";
+    if (pathname.startsWith("/admin/packages")) return "Packages";
+    if (pathname.startsWith("/admin/reports")) return "Reports";
     return "";
   }, [pathname]);
 
