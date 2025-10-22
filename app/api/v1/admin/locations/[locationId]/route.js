@@ -5,9 +5,10 @@ import HotspotLocation from "@/models/HotspotLocation";
 import Partner from "@/models/Partner";
 import { LocationUpdateSchema } from "@/lib/validators/admin";
 
-export async function PUT(req, { params }) {
+export async function PUT(req, ctx) {
   const session = await requireAdminSession(req);
   if (!session) return unauthorized();
+  const { locationId } = await ctx.params;
   await dbConnect();
   const body = await req.json().catch(() => null);
   const parsed = LocationUpdateSchema.safeParse(body);
@@ -18,11 +19,12 @@ export async function PUT(req, { params }) {
     if (!ok) return badRequest("Invalid partnerId");
   }
 
-  const { locationId } = await params;
   const updated = await HotspotLocation.findByIdAndUpdate(
     locationId,
     parsed.data,
-    { new: true }
+    {
+      new: true,
+    }
   ).populate({ path: "partnerId", select: "firstName lastName" });
 
   if (!updated) return notFound("Location not found");
@@ -39,4 +41,14 @@ export async function PUT(req, { params }) {
         }
       : null,
   });
+}
+
+export async function DELETE(req, ctx) {
+  const session = await requireAdminSession(req);
+  if (!session) return unauthorized();
+  const { locationId } = await ctx.params;
+  await dbConnect();
+  const res = await HotspotLocation.findByIdAndDelete(locationId);
+  if (!res) return notFound("Location not found");
+  return new Response(null, { status: 204 });
 }

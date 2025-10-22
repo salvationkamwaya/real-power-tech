@@ -20,6 +20,12 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  // Disallow native browser dialogs across the codebase
+  {
+    rules: {
+      "no-alert": "error",
+    },
+  },
 ];
 
 export default eslintConfig;

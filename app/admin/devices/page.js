@@ -1,13 +1,130 @@
 "use client";
 
 import useSWR, { mutate } from "swr";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 import AlertModal from "@/components/admin/AlertModal";
 
 const fetcher = (url) =>
   fetch(url).then((r) => (r.ok ? r.json() : Promise.reject()));
 
-function LocationModal({ open, onClose }) {
+function EditLocationModal({ open, onClose, initial }) {
+  const [name, setName] = useState(initial?.name || "");
+  const [status, setStatus] = useState(initial?.status || "Active");
+  const [partnerId, setPartnerId] = useState(initial?.partner?.id || "");
+  const [loading, setLoading] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMsg, setAlertMsg] = useState("");
+  const { data: partners } = useSWR(
+    "/api/v1/admin/partners?limit=1000",
+    fetcher
+  );
+
+  useEffect(() => {
+    setName(initial?.name || "");
+    setStatus(initial?.status || "Active");
+    setPartnerId(initial?.partner?.id || "");
+  }, [initial]);
+
+  if (!open) return null;
+
+  const save = async () => {
+    setLoading(true);
+    const res = await fetch(`/api/v1/admin/locations/${initial.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, status, partnerId }),
+    });
+    setLoading(false);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setAlertMsg(j.message || "Update failed");
+      setAlertOpen(true);
+      return false;
+    }
+    return true;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 grid place-items-center z-50">
+      <div className="w-full max-w-lg bg-card text-card-foreground border rounded-md shadow p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Edit Location</h3>
+          <button className="text-sm hover:underline" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="grid gap-3">
+          <div>
+            <label className="block text-sm mb-1">Location Name</label>
+            <input
+              className="w-full border rounded px-3 py-2"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Status</label>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option>Active</option>
+              <option>Inactive</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Assign to Partner</label>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={partnerId}
+              onChange={(e) => setPartnerId(e.target.value)}
+            >
+              <option value="">Select a Partner...</option>
+              {(partners?.data || []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.firstName} {p.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <button className="px-3 py-2 rounded-md border" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="px-3 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+            disabled={loading || !name || !partnerId}
+            onClick={async () => {
+              const ok = await save();
+              if (ok) {
+                mutate(
+                  (key) =>
+                    typeof key === "string" &&
+                    key.startsWith("/api/v1/admin/locations")
+                );
+                onClose();
+              }
+            }}
+          >
+            {loading ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+      <AlertModal
+        open={alertOpen}
+        title="Error"
+        description={alertMsg}
+        variant="danger"
+        onClose={() => setAlertOpen(false)}
+      />
+    </div>
+  );
+}
+
+function CreateLocationModal({ open, onClose }) {
   const [name, setName] = useState("");
   const [model, setModel] = useState("");
   const [identifier, setIdentifier] = useState("");
@@ -15,7 +132,6 @@ function LocationModal({ open, onClose }) {
   const [loading, setLoading] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
-
   const { data: partners } = useSWR(
     "/api/v1/admin/partners?limit=1000",
     fetcher
@@ -38,7 +154,11 @@ function LocationModal({ open, onClose }) {
     setLoading(false);
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      setAlertMsg(j.message || "Save failed");
+      setAlertMsg(
+        typeof j.message === "string"
+          ? j.message
+          : JSON.stringify(j.message || j)
+      );
       setAlertOpen(true);
       return false;
     }
@@ -122,7 +242,6 @@ function LocationModal({ open, onClose }) {
           </button>
         </div>
       </div>
-
       <AlertModal
         open={alertOpen}
         title="Error"
@@ -136,13 +255,16 @@ function LocationModal({ open, onClose }) {
 
 export default function DevicesPage() {
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [toEdit, setToEdit] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
 
   const { data, error, isLoading } = useSWR(
     `/api/v1/admin/locations?search=${encodeURIComponent(query)}`,
     fetcher
   );
-
   const rows = data?.data || [];
 
   return (
@@ -156,7 +278,7 @@ export default function DevicesPage() {
         />
         <button
           className="px-3 py-2 rounded-md bg-primary text-primary-foreground"
-          onClick={() => setOpen(true)}
+          onClick={() => setCreateOpen(true)}
         >
           Add New Location
         </button>
@@ -201,18 +323,45 @@ export default function DevicesPage() {
                   <td className="px-4 py-3">{l.partner?.name}</td>
                   <td className="px-4 py-3">{l.routerIdentifier}</td>
                   <td className="px-4 py-3">{l.status}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 flex gap-3">
                     <button
-                      className="text-blue-600 hover:underline mr-3"
-                      disabled
+                      className="text-blue-600 hover:underline"
+                      onClick={() => {
+                        setToEdit(l);
+                        setEditOpen(true);
+                      }}
                     >
                       Edit
                     </button>
                     <button
-                      className="text-yellow-700 hover:underline mr-3"
-                      disabled
+                      className="text-yellow-700 hover:underline"
+                      onClick={async () => {
+                        // Toggle Active/Inactive quickly
+                        await fetch(`/api/v1/admin/locations/${l.id}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            status:
+                              l.status === "Active" ? "Inactive" : "Active",
+                          }),
+                        });
+                        mutate(
+                          (key) =>
+                            typeof key === "string" &&
+                            key.startsWith("/api/v1/admin/locations")
+                        );
+                      }}
                     >
-                      Deactivate
+                      {l.status === "Active" ? "Deactivate" : "Activate"}
+                    </button>
+                    <button
+                      className="text-red-600 hover:underline"
+                      onClick={() => {
+                        setConfirmTarget(l);
+                        setConfirmOpen(true);
+                      }}
+                    >
+                      Remove
                     </button>
                   </td>
                 </tr>
@@ -222,7 +371,38 @@ export default function DevicesPage() {
         </table>
       </div>
 
-      <LocationModal open={open} onClose={() => setOpen(false)} />
+      <CreateLocationModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
+      <EditLocationModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        initial={toEdit}
+      />
+
+      <ConfirmModal
+        open={confirmOpen}
+        title="Remove Location?"
+        description="This will permanently delete the location. This action cannot be undone."
+        variant="danger"
+        confirmText="Remove"
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={async () => {
+          const l = confirmTarget;
+          setConfirmOpen(false);
+          if (!l) return;
+          const res = await fetch(`/api/v1/admin/locations/${l.id}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) return;
+          mutate(
+            (key) =>
+              typeof key === "string" &&
+              key.startsWith("/api/v1/admin/locations")
+          );
+        }}
+      />
     </div>
   );
 }
