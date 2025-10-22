@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { useSession } from "@/lib/sessionContext";
 import { Menu } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
 
 export function AdminHeader({ title, onMenuClick }) {
-  const { user, setUser } = useSession();
+  const { data } = useSession();
+  const user = data?.user;
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -74,8 +75,7 @@ export function AdminHeader({ title, onMenuClick }) {
               )}
               onClick={() => {
                 setOpen(false);
-                setUser(null);
-                window.location.href = "/login";
+                signOut({ callbackUrl: "/login" });
               }}
               role="menuitem"
             >

@@ -1,19 +1,34 @@
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-const COOKIE_NAME = "rpt_session";
+// Server-side protection for admin routes and QoL redirect from /login
+export async function middleware(req) {
+  const { pathname, search } = req.nextUrl;
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-export function middleware(request) {
-  const { pathname } = request.nextUrl;
+  const isAuthPage = pathname === "/login";
+
+  // If visiting /login while already authenticated, go to dashboard
+  if (isAuthPage) {
+    if (token) {
+      return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Protect /admin/*
   if (pathname.startsWith("/admin")) {
-    const cookie = request.cookies.get(COOKIE_NAME)?.value;
-    if (!cookie) {
-      const url = new URL("/login", request.url);
-      return NextResponse.redirect(url);
+    if (!token) {
+      const loginUrl = new URL("/login", req.url);
+      // Preserve original destination as callback
+      loginUrl.searchParams.set("callbackUrl", pathname + (search || ""));
+      return NextResponse.redirect(loginUrl);
     }
   }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/login"],
 };

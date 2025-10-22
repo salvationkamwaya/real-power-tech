@@ -26,7 +26,8 @@ export function AdminSidebar({ open, onClose }) {
     <aside
       className={cn(
         "bg-sidebar text-sidebar-foreground w-64 shrink-0 border-r border-sidebar-border",
-        "fixed md:static inset-y-0 left-0 z-40 transform transition-transform duration-200",
+        // Always fixed; content will offset via md:ml-64
+        "fixed inset-y-0 left-0 z-40 transform transition-transform duration-200",
         open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}
       aria-label="Sidebar"

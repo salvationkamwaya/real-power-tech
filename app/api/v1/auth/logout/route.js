@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 
-const COOKIE_NAME = "rpt_session";
+export function GET() {
+  return new Response("Not Found", { status: 404 });
+}
 
-export async function POST() {
-  const res = NextResponse.json({ message: "Logged out successfully." });
-  res.cookies.set({
-    name: COOKIE_NAME,
-    value: "",
-    httpOnly: true,
-    path: "/",
-    maxAge: 0,
-  });
-  return res;
+export function POST() {
+  return new Response("Not Found", { status: 404 });
 }

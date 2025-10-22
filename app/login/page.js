@@ -1,34 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { useSession } from "@/lib/sessionContext";
+import { useEffect, useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
-  const { setUser } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const callbackUrl = searchParams.get("callbackUrl") || "/admin/dashboard";
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    try {
-      const res = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Login failed");
-      setUser(data.user);
-      window.location.href = "/admin/dashboard";
-    } catch (err) {
-      setError(err.message || "Login failed");
-    } finally {
-      setLoading(false);
+    const res = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+      callbackUrl,
+    });
+    if (res?.ok) {
+      router.push(callbackUrl);
+    } else {
+      setError("Invalid email or password. Please try again.");
     }
+    setLoading(false);
   };
 
   return (
