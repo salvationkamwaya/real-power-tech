@@ -1,7 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { mockPartners, mockLocations } from "@/lib/mockApi";
+import useSWR from "swr";
+
+const fetcher = (url) =>
+  fetch(url).then((r) => (r.ok ? r.json() : Promise.reject()));
 
 function SummaryCard({ label, value }) {
   return (
@@ -19,7 +22,11 @@ export default function ReportsPage() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
 
-  const partners = mockPartners;
+  const { data: partnersRes } = useSWR(
+    "/api/v1/admin/partners?limit=1000",
+    fetcher
+  );
+  const partners = partnersRes?.data || [];
 
   const handleGenerate = async () => {
     setError("");
@@ -28,32 +35,22 @@ export default function ReportsPage() {
       return;
     }
     setLoading(true);
-    // Simulate API work
-    await new Promise((r) => setTimeout(r, 800));
+    // Temporary mocked output until M4 real reports API
+    await new Promise((r) => setTimeout(r, 600));
 
     const selected = partners.find((p) => p.id === partnerId);
     const partnerName = `${selected.firstName} ${selected.lastName}`;
     const partnerShare = selected.revenueSharePercentage;
 
-    // Build some realistic mock rows from partner locations
-    const locs = mockLocations.filter((l) => l.partner.id === partnerId);
-    const baseRows = locs.length
-      ? locs.map((l, i) => ({
-          id: `t${i + 1}`,
-          timestamp: new Date(Date.now() - i * 1000 * 60 * 37).toISOString(),
-          locationName: l.name,
-          packageName: i % 2 === 0 ? "1-Hour Access" : "24-Hour Pass",
-          amount: i % 2 === 0 ? 1000 : 5000,
-        }))
-      : [
-          {
-            id: "t1",
-            timestamp: new Date().toISOString(),
-            locationName: "Unassigned Test Location",
-            packageName: "1-Hour Access",
-            amount: 1000,
-          },
-        ];
+    const baseRows = [
+      {
+        id: "t1",
+        timestamp: new Date().toISOString(),
+        locationName: "Sample Location",
+        packageName: "1-Hour Access",
+        amount: 1000,
+      },
+    ];
 
     const totalRevenueGenerated = baseRows.reduce((s, r) => s + r.amount, 0);
     const partnerPayoutAmount = Math.round(

@@ -1,8 +1,13 @@
 "use client";
 
-import { mockDashboardStats } from "@/lib/mockApi";
-import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { CircleDollarSign, Users, MapPin, Building2 } from "lucide-react";
+
+const fetcher = (url) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error("Failed to load");
+    return r.json();
+  });
 
 function StatCard({ icon: Icon, label, value }) {
   return (
@@ -21,16 +26,8 @@ function StatCard({ icon: Icon, label, value }) {
 }
 
 export default function DashboardPage() {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setData(mockDashboardStats);
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(t);
-  }, []);
+  const { data, error } = useSWR("/api/v1/admin/dashboard-stats", fetcher);
+  const loading = !data && !error;
 
   return (
     <div>
@@ -39,6 +36,8 @@ export default function DashboardPage() {
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
           ))
+        ) : error ? (
+          <div className="col-span-4 text-red-600">Failed to load stats.</div>
         ) : (
           <>
             <StatCard
@@ -73,6 +72,8 @@ export default function DashboardPage() {
               <div key={i} className="h-10 bg-muted rounded animate-pulse" />
             ))}
           </div>
+        ) : error ? (
+          <div className="text-red-600">Failed to load transactions.</div>
         ) : data.recentTransactions.length === 0 ? (
           <div className="text-center p-8 border rounded-md bg-card">
             <div className="text-lg font-medium">

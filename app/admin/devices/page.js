@@ -1,16 +1,49 @@
 "use client";
 
-import { mockLocations, mockPartners } from "@/lib/mockApi";
+import useSWR, { mutate } from "swr";
 import { useMemo, useState } from "react";
+import AlertModal from "@/components/admin/AlertModal";
 
-function LocationModal({ open, onClose, onSave }) {
+const fetcher = (url) =>
+  fetch(url).then((r) => (r.ok ? r.json() : Promise.reject()));
+
+function LocationModal({ open, onClose }) {
   const [name, setName] = useState("");
   const [model, setModel] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [partnerId, setPartnerId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMsg, setAlertMsg] = useState("");
+
+  const { data: partners } = useSWR(
+    "/api/v1/admin/partners?limit=1000",
+    fetcher
+  );
 
   if (!open) return null;
+
+  const save = async () => {
+    setLoading(true);
+    const res = await fetch("/api/v1/admin/locations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        routerModel: model,
+        routerIdentifier: identifier,
+        partnerId,
+      }),
+    });
+    setLoading(false);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setAlertMsg(j.message || "Save failed");
+      setAlertOpen(true);
+      return false;
+    }
+    return true;
+  };
 
   return (
     <div className="fixed inset-0 bg-black/30 grid place-items-center z-50">
@@ -58,7 +91,7 @@ function LocationModal({ open, onClose, onSave }) {
               onChange={(e) => setPartnerId(e.target.value)}
             >
               <option value="">Select a Partner...</option>
-              {mockPartners.map((p) => (
+              {(partners?.data || []).map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.firstName} {p.lastName}
                 </option>
@@ -74,16 +107,29 @@ function LocationModal({ open, onClose, onSave }) {
             className="px-3 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
             disabled={loading || !name || !identifier || !partnerId}
             onClick={async () => {
-              setLoading(true);
-              await new Promise((r) => setTimeout(r, 600));
-              onSave({ name, model, identifier, partnerId });
-              setLoading(false);
+              const ok = await save();
+              if (ok) {
+                mutate(
+                  (key) =>
+                    typeof key === "string" &&
+                    key.startsWith("/api/v1/admin/locations")
+                );
+                onClose();
+              }
             }}
           >
             {loading ? "Saving..." : "Save Location"}
           </button>
         </div>
       </div>
+
+      <AlertModal
+        open={alertOpen}
+        title="Error"
+        description={alertMsg}
+        variant="danger"
+        onClose={() => setAlertOpen(false)}
+      />
     </div>
   );
 }
@@ -91,25 +137,16 @@ function LocationModal({ open, onClose, onSave }) {
 export default function DevicesPage() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [toast, setToast] = useState("");
 
-  const filtered = useMemo(() => {
-    return mockLocations.filter((l) =>
-      l.name.toLowerCase().includes(query.toLowerCase())
-    );
-  }, [query]);
+  const { data, error, isLoading } = useSWR(
+    `/api/v1/admin/locations?search=${encodeURIComponent(query)}`,
+    fetcher
+  );
+
+  const rows = data?.data || [];
 
   return (
     <div>
-      {toast && (
-        <div
-          className="fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow"
-          onAnimationEnd={() => setToast("")}
-        >
-          {toast}
-        </div>
-      )}
-
       <div className="flex items-center justify-between mt-4">
         <input
           placeholder="Search by location name..."
@@ -137,24 +174,44 @@ export default function DevicesPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-3" colSpan={5}>
+                    <div className="h-8 bg-muted animate-pulse rounded" />
+                  </td>
+                </tr>
+              ))
+            ) : error ? (
+              <tr>
+                <td colSpan={5} className="text-red-600 px-4 py-3">
+                  Failed to load locations.
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="text-center py-10">
                   No Locations Found
                 </td>
               </tr>
             ) : (
-              filtered.map((l) => (
+              rows.map((l) => (
                 <tr key={l.id} className="hover:bg-muted/30 border-t">
                   <td className="px-4 py-3">{l.name}</td>
-                  <td className="px-4 py-3">{l.partner.name}</td>
+                  <td className="px-4 py-3">{l.partner?.name}</td>
                   <td className="px-4 py-3">{l.routerIdentifier}</td>
                   <td className="px-4 py-3">{l.status}</td>
                   <td className="px-4 py-3">
-                    <button className="text-blue-600 hover:underline mr-3">
+                    <button
+                      className="text-blue-600 hover:underline mr-3"
+                      disabled
+                    >
                       Edit
                     </button>
-                    <button className="text-yellow-700 hover:underline mr-3">
+                    <button
+                      className="text-yellow-700 hover:underline mr-3"
+                      disabled
+                    >
                       Deactivate
                     </button>
                   </td>
@@ -165,15 +222,7 @@ export default function DevicesPage() {
         </table>
       </div>
 
-      <LocationModal
-        open={open}
-        onClose={() => setOpen(false)}
-        onSave={() => {
-          setOpen(false);
-          setToast("Location saved successfully.");
-          setTimeout(() => setToast(""), 2000);
-        }}
-      />
+      <LocationModal open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }
