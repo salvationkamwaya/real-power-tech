@@ -31,6 +31,7 @@ export async function POST(req) {
 
   const body = await req.json().catch(() => ({}));
   const usernameRaw =
+    body["User-Name"] || // Primary field as per RADIUS spec
     body.username ||
     body.UserName ||
     body.mac ||
@@ -52,8 +53,10 @@ export async function POST(req) {
     .lean();
 
   if (!grant) {
-    // Deny access. rlm_rest can use HTTP status or response content.
-    return new Response("Forbidden", { status: 403 });
+    // Deny access - return 200 OK with reject reply
+    return ok({
+      reply: [{ attribute: "Auth-Type", value: "Reject", op: ":=" }],
+    });
   }
 
   // Compute remaining seconds (clamp >=1)
@@ -62,11 +65,30 @@ export async function POST(req) {
     Math.floor((new Date(grant.expiresAt).getTime() - now.getTime()) / 1000)
   );
 
-  // rlm_rest understands a JSON map of reply attributes
-  // Return Access-Accept with Session-Timeout
+  // Build reply array with Session-Timeout
+  const replyAttributes = [
+    { attribute: "Session-Timeout", value: remaining, op: ":=" },
+  ];
+
+  // Check if there's a Mikrotik-Rate-Limit configured for this user
+  const rateLimit = await RadiusReply.findOne({
+    username,
+    attribute: "Mikrotik-Rate-Limit",
+    expiresAt: { $gt: now },
+  })
+    .sort({ expiresAt: -1 })
+    .lean();
+
+  if (rateLimit?.value) {
+    replyAttributes.push({
+      attribute: "Mikrotik-Rate-Limit",
+      value: rateLimit.value,
+      op: ":=",
+    });
+  }
+
+  // Return Access-Accept with reply attributes array
   return ok({
-    // Optional control can steer modules; most setups only need reply
-    control: { "Auth-Type": "Accept" },
-    reply: { "Session-Timeout": String(remaining) },
+    reply: replyAttributes,
   });
 }

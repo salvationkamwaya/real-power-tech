@@ -6,6 +6,8 @@ const ServicePackageSchema = new mongoose.Schema(
     price: Number,
     durationMinutes: Number,
     isActive: { type: Boolean, default: true },
+    // Optional: Mikrotik rate limit in format "upload/download" (e.g., "1M/5M")
+    rateLimit: { type: String, default: null },
   },
   { timestamps: true }
 );

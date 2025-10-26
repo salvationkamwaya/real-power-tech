@@ -115,6 +115,23 @@ export async function POST(req) {
             },
             { upsert: true }
           );
+
+          // 3) radreply: optionally set Mikrotik-Rate-Limit if configured in package
+          if (pkg.rateLimit) {
+            await RadiusReply.updateOne(
+              { orderReference, attribute: "Mikrotik-Rate-Limit" },
+              {
+                username,
+                attribute: "Mikrotik-Rate-Limit",
+                op: ":=",
+                value: pkg.rateLimit,
+                hotspotLocationId: tx.hotspotLocationId || null,
+                expiresAt,
+                orderReference,
+              },
+              { upsert: true }
+            );
+          }
         }
       } catch (e) {
         // Swallow errors to not break webhook ACK; rely on logs/monitoring later
