@@ -27,5 +27,9 @@ const TransactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Helpful indexes for dashboards and reports
+TransactionSchema.index({ status: 1, createdAt: -1 });
+TransactionSchema.index({ hotspotLocationId: 1, createdAt: -1 });
+
 export default mongoose.models.Transaction ||
   mongoose.model("Transaction", TransactionSchema);

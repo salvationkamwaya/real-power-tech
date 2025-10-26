@@ -9,6 +9,9 @@ const OperatorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Helpful index for auth lookups
+OperatorSchema.index({ email: 1 });
+
 OperatorSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   const salt = await bcrypt.genSalt(10);

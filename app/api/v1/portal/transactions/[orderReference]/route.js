@@ -6,7 +6,12 @@ import { queryPaymentStatus } from "@/lib/clickpesa";
 export async function GET(req, ctx) {
   const { orderReference } = await ctx.params;
   await dbConnect();
-  const tx = await Transaction.findOne({ orderReference });
+  const tx = await Transaction.findOne({ orderReference })
+    .populate({
+      path: "servicePackageId",
+      select: "name durationMinutes price",
+    })
+    .populate({ path: "hotspotLocationId", select: "name" });
   if (!tx) return notFound("Transaction not found");
 
   if (tx.status === "Pending") {
@@ -23,5 +28,19 @@ export async function GET(req, ctx) {
     } catch (_) {}
   }
 
-  return json({ orderReference, status: tx.status });
+  return json({
+    orderReference,
+    status: tx.status,
+    amount: tx.amount,
+    currency: tx.currency,
+    package: tx.servicePackageId
+      ? {
+          id: String(tx.servicePackageId._id),
+          name: tx.servicePackageId.name,
+          durationMinutes: tx.servicePackageId.durationMinutes,
+          price: tx.servicePackageId.price,
+        }
+      : null,
+    locationName: tx.hotspotLocationId?.name || null,
+  });
 }

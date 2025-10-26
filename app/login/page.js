@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -84,5 +84,29 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen grid place-items-center bg-[#F8F9FA] p-4">
+          <div className="w-full max-w-md bg-card text-card-foreground rounded-lg border p-6 shadow-sm">
+            <div className="text-center mb-6">
+              <div className="text-2xl font-bold">REAL POWERTECH LTD</div>
+            </div>
+            <div className="space-y-4 animate-pulse">
+              <div className="h-4 bg-muted rounded w-1/2 mx-auto" />
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-10 bg-muted rounded" />
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

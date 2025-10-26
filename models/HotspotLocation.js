@@ -15,5 +15,9 @@ const HotspotLocationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Indexes for admin filters and lookups
+HotspotLocationSchema.index({ partnerId: 1 });
+HotspotLocationSchema.index({ name: 1 });
+
 export default mongoose.models.HotspotLocation ||
   mongoose.model("HotspotLocation", HotspotLocationSchema);

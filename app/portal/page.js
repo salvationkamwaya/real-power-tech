@@ -1,18 +1,22 @@
 "use client";
 
 import useSWR from "swr";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import AlertModal from "@/components/admin/AlertModal";
+import { useSearchParams } from "next/navigation";
 
 const fetcher = (url) =>
   fetch(url).then((r) => (r.ok ? r.json() : Promise.reject()));
 
-export default function PortalPage() {
+function PortalContent() {
   const { data, error, isLoading } = useSWR("/api/v1/portal/packages", fetcher);
   const packages = data || [];
   const [loading, setLoading] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
+  const sp = useSearchParams();
+  const mac = sp.get("mac");
+  const router = sp.get("router") || sp.get("routerIdentifier");
 
   async function startHosted(pkg) {
     try {
@@ -20,13 +24,22 @@ export default function PortalPage() {
       const res = await fetch("/api/v1/portal/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packageId: pkg.id }),
+        body: JSON.stringify({
+          packageId: pkg.id,
+          customerMacAddress: mac || undefined,
+          routerIdentifier: router || undefined,
+        }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.message || "Checkout failed");
       }
       const j = await res.json();
+      try {
+        if (j.orderReference && typeof window !== "undefined") {
+          window.sessionStorage.setItem("lastOrderReference", j.orderReference);
+        }
+      } catch (_) {}
       window.location.href = j.paymentUrl; // redirect to hosted checkout
     } catch (e) {
       setAlertMsg(e.message || "Payment start failed");
@@ -80,5 +93,24 @@ export default function PortalPage() {
         onClose={() => setAlertOpen(false)}
       />
     </div>
+  );
+}
+
+export default function PortalPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[70vh] flex flex-col items-center justify-center p-6">
+          <div className="text-2xl font-bold mb-2">REAL POWERTECH LTD</div>
+          <div className="w-full max-w-md grid gap-3 mt-6">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="h-24 bg-muted rounded animate-pulse" />
+            ))}
+          </div>
+        </div>
+      }
+    >
+      <PortalContent />
+    </Suspense>
   );
 }
