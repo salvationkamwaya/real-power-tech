@@ -6,7 +6,8 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const MONGODB_URI = "mongodb+srv://jestone002:CpQaNvoPeYt0rYvV@cluster0.oqfo3zc.mongodb.net/real-power-tech?appName=Cluster0";
+const MONGODB_URI =
+  "mongodb+srv://jestone002:CpQaNvoPeYt0rYvV@cluster0.oqfo3zc.mongodb.net/real-power-tech?appName=Cluster0";
 
 async function run() {
   const emailArg = process.argv[2] || "jestone002@gmail.com";
