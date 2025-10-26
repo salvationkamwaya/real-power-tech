@@ -49,7 +49,20 @@ function PortalContent() {
   }
 
   return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center p-6">
+    <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 relative">
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center gap-4 shadow-xl">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="text-lg font-semibold">Processing...</div>
+            <div className="text-sm text-muted-foreground text-center max-w-xs">
+              Please wait
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="text-2xl font-bold mb-2">REAL POWERTECH LTD</div>
       <p className="text-muted-foreground mb-6 text-center">
         Select a package. You will be redirected to ClickPesa to complete
@@ -69,7 +82,7 @@ function PortalContent() {
           packages.map((p) => (
             <button
               key={p.id}
-              className="text-left border rounded-md p-4 bg-card hover:scale-[1.02] transition transform disabled:opacity-60"
+              className="text-left border rounded-md p-4 bg-card hover:scale-[1.02] transition transform disabled:opacity-60 disabled:cursor-not-allowed"
               onClick={() => startHosted(p)}
               disabled={loading}
             >
@@ -78,7 +91,7 @@ function PortalContent() {
                 {p.price.toLocaleString()} Tsh
               </div>
               <div className="text-sm text-muted-foreground mt-1">
-                Tap to purchase
+                {loading ? "Processing..." : "Tap to purchase"}
               </div>
             </button>
           ))

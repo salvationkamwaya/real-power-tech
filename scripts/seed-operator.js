@@ -1,78 +1,25 @@
 #!/usr/bin/env node
 
-// Self-contained seed script with optional env support.
-// Usage:
-//   node scripts/seed-operator.js [mongodb-connection-string] [email] [password]
-// If no connection string arg is provided, reads MONGODB_URI from .env.local or local.env.
-
-const fs = require("fs");
-const path = require("path");
-let dotenvLoaded = false;
-try {
-  const dotenv = require("dotenv");
-  // Load .env.local if present
-  const envLocal = path.resolve(process.cwd(), ".env.local");
-  if (fs.existsSync(envLocal)) {
-    dotenv.config({ path: envLocal });
-    dotenvLoaded = true;
-  }
-  // Load local.env if present (won't overwrite existing vars)
-  const envFile = path.resolve(process.cwd(), "local.env");
-  if (fs.existsSync(envFile)) {
-    dotenv.config({ path: envFile, override: false });
-    dotenvLoaded = true;
-  }
-} catch (_) {
-  // dotenv not installed; try manual parse of local.env if present
-  const envFile = path.resolve(process.cwd(), "local.env");
-  if (fs.existsSync(envFile)) {
-    const raw = fs.readFileSync(envFile, "utf8");
-    raw
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l && !l.startsWith("#"))
-      .forEach((line) => {
-        // Support lines like: KEY=VALUE or export KEY=VALUE
-        const cleaned = line.startsWith("export ") ? line.slice(7) : line;
-        const idx = cleaned.indexOf("=");
-        if (idx > 0) {
-          const key = cleaned.slice(0, idx).trim();
-          let val = cleaned.slice(idx + 1).trim();
-          if (
-            (val.startsWith('"') && val.endsWith('"')) ||
-            (val.startsWith("'") && val.endsWith("'"))
-          ) {
-            val = val.slice(1, -1);
-          }
-          if (!process.env[key]) process.env[key] = val;
-        }
-      });
-  }
-}
+// Self-contained seed script
+// Usage: node scripts/seed-operator.js [email] [password]
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
+const MONGODB_URI = "mongodb+srv://jestone002:CpQaNvoPeYt0rYvV@cluster0.oqfo3zc.mongodb.net/real-power-tech?appName=Cluster0";
+
 async function run() {
-  const argConn = process.argv[2];
-  const emailArg = process.argv[3] || "admin@realpowertech.com";
-  const passArg = process.argv[4] || "password123";
-
-  const connStr = process.env.MONGODB_URI || argConn;
-
-  if (!connStr) {
-    console.error(
-      "[seed-operator] Missing MongoDB connection string.\n" +
-        (dotenvLoaded
-          ? "Set MONGODB_URI in .env.local or local.env, or pass it as the first argument."
-          : "Set MONGODB_URI in local.env (or pass it as the first argument).") +
-        "\nUsage: node scripts/seed-operator.js [mongodb-connection-string] [email] [password]"
-    );
-    process.exit(1);
-  }
+  const emailArg = process.argv[2] || "jestone002@gmail.com";
+  const passArg = process.argv[3] || "password123";
 
   console.log("[seed-operator] Connecting to MongoDB ...");
-  await mongoose.connect(connStr);
+  await mongoose.connect(MONGODB_URI, {
+    dbName: "real-power-tech",
+  });
+
+  console.log(
+    `[seed-operator] Connected to database: ${mongoose.connection.db.databaseName}`
+  );
 
   const OperatorSchema = new mongoose.Schema(
     {
