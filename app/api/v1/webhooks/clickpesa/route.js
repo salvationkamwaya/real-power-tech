@@ -47,25 +47,40 @@ export async function POST(req) {
   // Verify checksum if provided (ClickPesa may provide in header or body depending on config)
   const secret = process.env.CLICKPESA_CHECKSUM_KEY || "";
   if (secret) {
+    // ClickPesa nests checksum inside `data.checksum` for webhooks
     const provided =
-      payload.checksum || req.headers.get("x-clickpesa-checksum") || "";
-    // Exclude checksum field when computing signature
-    const { checksum, ...toSign } = payload || {};
+      data?.checksum ||
+      payload.checksum ||
+      req.headers.get("x-clickpesa-checksum") ||
+      "";
+
+    // Build the object to sign from payload.data, excluding checksum
+    const { checksum: _ignored, ...toSignRaw } = data || {};
+
+    // Per docs: values should be strings; serialize complex types
+    const toSign = Object.fromEntries(
+      Object.entries(toSignRaw).map(([k, v]) => [
+        k,
+        typeof v === "string" ? v : JSON.stringify(v),
+      ])
+    );
+
     const computed = clickpesaChecksum(secret, toSign);
 
     console.log("🔐 Checksum verification:", {
-      provided: provided.substring(0, 16) + "...",
+      provided: provided ? provided.substring(0, 16) + "..." : "",
       computed: computed.substring(0, 16) + "...",
-      match: provided === computed,
+      match: provided && provided === computed,
+      signKeys: Object.keys(toSign).sort(),
     });
 
     if (!provided || provided !== computed) {
       console.error("❌ CHECKSUM MISMATCH - Webhook rejected");
       console.error("   Provided:", provided);
       console.error("   Computed:", computed);
-      console.error("   Payload keys:", Object.keys(toSign).sort());
       return new Response("Invalid checksum", { status: 401 });
     }
+
     console.log("✅ Checksum verified");
   }
 
