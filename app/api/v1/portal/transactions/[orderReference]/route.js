@@ -1,5 +1,7 @@
 import { dbConnect } from "@/lib/dbConnect";
 import Transaction from "@/models/Transaction";
+import HotspotLocation from "@/models/HotspotLocation";
+import ServicePackage from "@/models/ServicePackage";
 import { json, notFound } from "@/lib/apiResponse";
 import { queryPaymentStatus } from "@/lib/clickpesa";
 
