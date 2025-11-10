@@ -3,14 +3,11 @@ import bcrypt from "bcryptjs";
 
 const OperatorSchema = new mongoose.Schema(
   {
-    email: { type: String, unique: true, required: true, index: true },
+    email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
   },
   { timestamps: true }
 );
-
-// Helpful index for auth lookups
-OperatorSchema.index({ email: 1 });
 
 OperatorSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
