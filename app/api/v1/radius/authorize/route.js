@@ -90,22 +90,19 @@ export async function POST(req) {
     const now = Date.now();
     const remaining = Math.max(1, Math.floor((cached.expiresAt - now) / 1000));
 
-    const replyAttributes = [
-      { attribute: "Session-Timeout", value: remaining, op: ":=" },
-    ];
+    // FreeRADIUS expects flat JSON object with attribute names as keys
+    const response = {
+      "Session-Timeout": remaining,
+    };
 
     if (cached.rateLimit) {
-      replyAttributes.push({
-        attribute: "Mikrotik-Rate-Limit",
-        value: cached.rateLimit,
-        op: ":=",
-      });
+      response["Mikrotik-Rate-Limit"] = cached.rateLimit;
     }
 
     const elapsed = Date.now() - startTime;
     console.log(`✅ RADIUS Auth: CACHED HIT for ${username} (${elapsed}ms)`);
 
-    return ok({ reply: replyAttributes });
+    return ok(response);
   }
 
   // Cache miss - query database
@@ -143,9 +140,9 @@ export async function POST(req) {
       `❌ RADIUS Auth: REJECT for ${username} (${elapsed}ms) - No active session`
     );
 
-    // Deny access - return 200 OK with reject reply
+    // Deny access - return 200 OK with flat JSON (FreeRADIUS format)
     return ok({
-      reply: [{ attribute: "Auth-Type", value: "Reject", op: ":=" }],
+      "Auth-Type": "Reject",
     });
   }
 
@@ -155,18 +152,14 @@ export async function POST(req) {
     Math.floor((new Date(grant.expiresAt).getTime() - nowMs) / 1000)
   );
 
-  // Build reply array with Session-Timeout
-  const replyAttributes = [
-    { attribute: "Session-Timeout", value: remaining, op: ":=" },
-  ];
+  // Build flat JSON response (FreeRADIUS expects attribute names as keys)
+  const response = {
+    "Session-Timeout": remaining,
+  };
 
   const rateLimit = rateLimitDoc?.value || null;
   if (rateLimit) {
-    replyAttributes.push({
-      attribute: "Mikrotik-Rate-Limit",
-      value: rateLimit,
-      op: ":=",
-    });
+    response["Mikrotik-Rate-Limit"] = rateLimit;
   }
 
   // Cache the session for future requests
@@ -180,8 +173,6 @@ export async function POST(req) {
     `✅ RADIUS Auth: ACCEPT for ${username} (${elapsed}ms) - Session: ${remaining}s`
   );
 
-  // Return Access-Accept with reply attributes array
-  return ok({
-    reply: replyAttributes,
-  });
+  // Return Access-Accept with flat JSON object
+  return ok(response);
 }
