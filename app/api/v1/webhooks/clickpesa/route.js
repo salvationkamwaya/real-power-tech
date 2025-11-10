@@ -55,16 +55,9 @@ export async function POST(req) {
       "";
 
     // Build the object to sign from payload.data, excluding checksum
-    const { checksum: _ignored, ...toSignRaw } = data || {};
+    const { checksum: _ignored, ...toSign } = data || {};
 
-    // Per docs: values should be strings; serialize complex types
-    const toSign = Object.fromEntries(
-      Object.entries(toSignRaw).map(([k, v]) => [
-        k,
-        typeof v === "string" ? v : JSON.stringify(v),
-      ])
-    );
-
+    // clickpesaChecksum() already handles String() conversion per ClickPesa docs
     const computed = clickpesaChecksum(secret, toSign);
 
     console.log("🔐 Checksum verification:", {
