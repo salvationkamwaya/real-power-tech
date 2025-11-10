@@ -42,7 +42,7 @@ function setCachedSession(username, data) {
 
 export async function POST(req) {
   const startTime = Date.now();
-  
+
   // Optional shared-secret verification for FreeRADIUS rlm_rest
   const secret = process.env.RADIUS_REST_SECRET || "";
   if (secret) {
@@ -50,20 +50,13 @@ export async function POST(req) {
     const { searchParams } = new URL(req.url);
     const keyProvided = searchParams.get("key") || ""; // fallback way to supply secret
     const provided = headerProvided || keyProvided;
-    
-    console.log("🔐 RADIUS Auth: Secret check", {
-      secretConfigured: !!secret,
-      headerProvided: headerProvided ? headerProvided.substring(0, 20) + "..." : "none",
-      keyProvided: keyProvided ? keyProvided.substring(0, 20) + "..." : "none",
-      match: provided === secret
-    });
-    
     if (provided !== secret) {
-      console.log("❌ RADIUS Auth: Invalid secret - TEMPORARILY DISABLED FOR TESTING");
-      // Temporarily disable to test RADIUS flow
-      // return new Response("Unauthorized", { status: 401 });
+      console.log("❌ RADIUS Auth: Invalid secret");
+      return new Response("Unauthorized", { status: 401 });
     }
-  }  // Rate limit by IP
+  }
+
+  // Rate limit by IP
   const ipHeader = req.headers.get("x-forwarded-for") || "";
   const ip =
     ipHeader.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
