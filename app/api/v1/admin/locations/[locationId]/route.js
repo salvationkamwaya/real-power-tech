@@ -4,6 +4,7 @@ import { badRequest, json, notFound, unauthorized } from "@/lib/apiResponse";
 import HotspotLocation from "@/models/HotspotLocation";
 import Partner from "@/models/Partner";
 import { LocationUpdateSchema } from "@/lib/validators/admin";
+import { normalizeMac } from "@/lib/utils";
 
 export async function PUT(req, ctx) {
   const session = await requireAdminSession(req);
@@ -19,9 +20,15 @@ export async function PUT(req, ctx) {
     if (!ok) return badRequest("Invalid partnerId");
   }
 
+  // Normalize router MAC if it's being updated
+  const updateData = { ...parsed.data };
+  if (updateData.routerIdentifier) {
+    updateData.routerIdentifier = normalizeMac(updateData.routerIdentifier);
+  }
+
   const updated = await HotspotLocation.findByIdAndUpdate(
     locationId,
-    parsed.data,
+    updateData,
     {
       new: true,
     }

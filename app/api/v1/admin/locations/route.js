@@ -4,6 +4,7 @@ import { badRequest, conflict, json, unauthorized } from "@/lib/apiResponse";
 import HotspotLocation from "@/models/HotspotLocation";
 import Partner from "@/models/Partner";
 import { LocationCreateSchema, parsePagination } from "@/lib/validators/admin";
+import { normalizeMac } from "@/lib/utils";
 
 export async function GET(req) {
   const session = await requireAdminSession(req);
@@ -53,16 +54,22 @@ export async function POST(req) {
   if (!parsed.success) return badRequest(parsed.error.flatten().fieldErrors);
 
   const { partnerId, routerIdentifier } = parsed.data;
+  
+  // Normalize the router MAC address
+  const normalizedRouterMac = normalizeMac(routerIdentifier);
+  
   const partner = await Partner.findById(partnerId);
   if (!partner) return badRequest("Invalid partnerId");
 
-  const exists = await HotspotLocation.findOne({ routerIdentifier });
+  const exists = await HotspotLocation.findOne({
+    routerIdentifier: normalizedRouterMac,
+  });
   if (exists) return conflict("Router MAC already registered");
 
   const created = await HotspotLocation.create({
     name: parsed.data.name,
     routerModel: parsed.data.routerModel,
-    routerIdentifier,
+    routerIdentifier: normalizedRouterMac,
     partnerId,
   });
 

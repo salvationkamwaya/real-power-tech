@@ -5,6 +5,7 @@ import Transaction from "@/models/Transaction";
 import { createCheckoutLink } from "@/lib/clickpesa";
 import HotspotLocation from "@/models/HotspotLocation";
 import { macRegex } from "@/lib/validators/admin";
+import { normalizeMac } from "@/lib/utils";
 
 function newOrderReference() {
   const ts = Date.now().toString();
@@ -26,23 +27,31 @@ export async function POST(req) {
   } = body || {};
   if (!packageId) return badRequest("packageId is required");
 
-  // Validate MACs if provided
-  if (customerMacAddress && !macRegex.test(customerMacAddress)) {
+  // Normalize MAC addresses before validation
+  const normalizedCustomerMac = customerMacAddress
+    ? normalizeMac(customerMacAddress)
+    : null;
+  const normalizedRouterMac = routerIdentifier
+    ? normalizeMac(routerIdentifier)
+    : null;
+
+  // Validate normalized MACs if provided
+  if (normalizedCustomerMac && !macRegex.test(normalizedCustomerMac)) {
     return badRequest("Invalid customerMacAddress (MAC) format");
   }
-  if (routerIdentifier && !macRegex.test(routerIdentifier)) {
+  if (normalizedRouterMac && !macRegex.test(normalizedRouterMac)) {
     return badRequest("Invalid routerIdentifier (MAC) format");
   }
 
   const pkg = await ServicePackage.findById(packageId);
   if (!pkg || !pkg.isActive) return badRequest("Invalid or inactive packageId");
 
-  // Resolve hotspot location by routerIdentifier if provided
+  // Resolve hotspot location by routerIdentifier if provided (use normalized MAC)
   let hotspotLocationId = null;
-  if (routerIdentifier) {
-    const loc = await HotspotLocation.findOne({ routerIdentifier }).select(
-      "_id"
-    );
+  if (normalizedRouterMac) {
+    const loc = await HotspotLocation.findOne({
+      routerIdentifier: normalizedRouterMac,
+    }).select("_id");
     if (!loc) return notFound("Hotspot location not registered");
     hotspotLocationId = loc._id;
   } else if (locationId) {
@@ -53,7 +62,7 @@ export async function POST(req) {
   await Transaction.create({
     servicePackageId: pkg._id,
     hotspotLocationId: hotspotLocationId || null,
-    customerMacAddress: customerMacAddress || null,
+    customerMacAddress: normalizedCustomerMac || null,
     amount: pkg.price,
     currency: process.env.CLICKPESA_CURRENCY || "TZS",
     orderReference,
