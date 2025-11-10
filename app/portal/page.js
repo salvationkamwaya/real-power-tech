@@ -8,15 +8,13 @@ import { useSearchParams } from "next/navigation";
 const fetcher = (url) =>
   fetch(url).then((r) => (r.ok ? r.json() : Promise.reject()));
 
-function PortalContent() {
+// THE FIX: We pass the mac and router as props now.
+function PortalContent({ mac, router }) {
   const { data, error, isLoading } = useSWR("/api/v1/portal/packages", fetcher);
   const packages = data || [];
   const [loading, setLoading] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
-  const sp = useSearchParams();
-  const mac = sp.get("mac");
-  const router = sp.get("router") || sp.get("routerIdentifier");
 
   async function startHosted(pkg) {
     try {
@@ -26,6 +24,7 @@ function PortalContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           packageId: pkg.id,
+          // THE FIX: We now use the props, which are guaranteed to be correct.
           customerMacAddress: mac || undefined,
           routerIdentifier: router || undefined,
         }),
@@ -109,6 +108,16 @@ function PortalContent() {
   );
 }
 
+// THE FIX: We create a new parent component.
+function PortalPageWrapper() {
+  const sp = useSearchParams();
+  const mac = sp.get("mac");
+  const router = sp.get("router") || sp.get("routerIdentifier");
+
+  // We pass the mac and router as props into the PortalContent component.
+  return <PortalContent mac={mac} router={router} />;
+}
+
 export default function PortalPage() {
   return (
     <Suspense
@@ -123,7 +132,8 @@ export default function PortalPage() {
         </div>
       }
     >
-      <PortalContent />
+      {/* THE FIX: We render the new wrapper component here. */}
+      <PortalPageWrapper />
     </Suspense>
   );
 }
