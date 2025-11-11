@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import AlertModal from "@/components/admin/AlertModal";
 import { useSearchParams } from "next/navigation";
 
@@ -113,6 +113,18 @@ function PortalPageWrapper() {
   const sp = useSearchParams();
   const mac = sp.get("mac");
   const router = sp.get("router") || sp.get("routerIdentifier");
+
+  // Store MAC in localStorage for redundancy (in case ClickPesa redirect loses params)
+  useEffect(() => {
+    if (mac) {
+      try {
+        window.localStorage.setItem("customerMacAddress", mac);
+        console.log("Stored MAC in localStorage:", mac);
+      } catch (e) {
+        console.warn("Could not save MAC to localStorage:", e);
+      }
+    }
+  }, [mac]);
 
   // We pass the mac and router as props into the PortalContent component.
   return <PortalContent mac={mac} router={router} />;

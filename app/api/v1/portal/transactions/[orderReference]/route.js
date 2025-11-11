@@ -35,6 +35,7 @@ export async function GET(req, ctx) {
     status: tx.status,
     amount: tx.amount,
     currency: tx.currency,
+    customerMacAddress: tx.customerMacAddress || null, // MAC address for login trigger
     package: tx.servicePackageId
       ? {
           id: String(tx.servicePackageId._id),
