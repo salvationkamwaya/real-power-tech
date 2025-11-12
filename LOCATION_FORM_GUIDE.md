@@ -13,7 +13,7 @@ When you open **Admin → Devices → Add New Location** or **Edit Location**, y
 **What to enter:** A friendly name for this hotspot location  
 **Example:** `Real Power Tech - Main Office`  
 **Where to get it:** You choose this yourself
-
+/user set api-admin password=MySecurePass123!
 ### 2. **Router Model**
 
 **What to enter:** The exact model of your MikroTik router  
