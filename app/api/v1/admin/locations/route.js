@@ -47,60 +47,67 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const session = await requireAdminSession(req);
-  if (!session) return unauthorized();
-  await dbConnect();
-  const body = await req.json().catch(() => null);
-  const parsed = LocationCreateSchema.safeParse(body);
-  if (!parsed.success) return badRequest(parsed.error.flatten().fieldErrors);
+  try {
+    const session = await requireAdminSession(req);
+    if (!session) return unauthorized();
+    await dbConnect();
+    const body = await req.json().catch(() => null);
+    const parsed = LocationCreateSchema.safeParse(body);
+    if (!parsed.success) return badRequest(parsed.error.flatten().fieldErrors);
 
-  const {
-    partnerId,
-    routerIdentifier,
-    routerApiPassword,
-    routerApiUrl,
-    routerApiUsername,
-    activationMethod,
-  } = parsed.data;
+    const {
+      partnerId,
+      routerIdentifier,
+      routerApiPassword,
+      routerApiUrl,
+      routerApiUsername,
+      activationMethod,
+    } = parsed.data;
 
-  // Normalize the router MAC address
-  const normalizedRouterMac = normalizeMac(routerIdentifier);
+    // Normalize the router MAC address
+    const normalizedRouterMac = normalizeMac(routerIdentifier);
 
-  const partner = await Partner.findById(partnerId);
-  if (!partner) return badRequest("Invalid partnerId");
+    const partner = await Partner.findById(partnerId);
+    if (!partner) return badRequest("Invalid partnerId");
 
-  const exists = await HotspotLocation.findOne({
-    routerIdentifier: normalizedRouterMac,
-  });
-  if (exists) return conflict("Router MAC already registered");
+    const exists = await HotspotLocation.findOne({
+      routerIdentifier: normalizedRouterMac,
+    });
+    if (exists) return conflict("Router MAC already registered");
 
-  // Encrypt password if provided
-  const encryptedPassword = routerApiPassword
-    ? await encryptPassword(routerApiPassword)
-    : null;
+    // Encrypt password if provided
+    const encryptedPassword = routerApiPassword
+      ? encryptPassword(routerApiPassword)
+      : null;
 
-  const created = await HotspotLocation.create({
-    name: parsed.data.name,
-    routerModel: parsed.data.routerModel,
-    routerIdentifier: normalizedRouterMac,
-    partnerId,
-    routerApiUrl,
-    routerApiUsername,
-    routerApiPassword: encryptedPassword,
-    activationMethod: activationMethod || "mikrotik-api",
-  });
+    const created = await HotspotLocation.create({
+      name: parsed.data.name,
+      routerModel: parsed.data.routerModel,
+      routerIdentifier: normalizedRouterMac,
+      partnerId,
+      routerApiUrl,
+      routerApiUsername,
+      routerApiPassword: encryptedPassword,
+      activationMethod: activationMethod || "mikrotik-api",
+    });
 
-  return json(
-    {
-      id: String(created._id),
-      name: created.name,
-      routerIdentifier: created.routerIdentifier,
-      status: created.status,
-      partner: {
-        id: String(partner._id),
-        name: `${partner.firstName} ${partner.lastName}`,
+    return json(
+      {
+        id: String(created._id),
+        name: created.name,
+        routerIdentifier: created.routerIdentifier,
+        status: created.status,
+        partner: {
+          id: String(partner._id),
+          name: `${partner.firstName} ${partner.lastName}`,
+        },
       },
-    },
-    201
-  );
+      201
+    );
+  } catch (error) {
+    console.error("❌ Location creation error:", error);
+    return badRequest(
+      error.message || "Failed to create location. Check server logs."
+    );
+  }
 }
