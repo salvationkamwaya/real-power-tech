@@ -10,8 +10,9 @@ import crypto from "crypto";
 // =============================================================================
 // CONFIGURATION (hardcoded from .env.local)
 // =============================================================================
-const ENCRYPTION_KEY_HEX = "f00851e735ce52640aba0923800021259c240f85809903e5fc016a64acb9be13";
-const ENCRYPTION_KEY = Buffer.from(ENCRYPTION_KEY_HEX, 'hex');
+const ENCRYPTION_KEY_HEX =
+  "f00851e735ce52640aba0923800021259c240f85809903e5fc016a64acb9be13";
+const ENCRYPTION_KEY = Buffer.from(ENCRYPTION_KEY_HEX, "hex");
 const IV_LENGTH = 16;
 
 const TEST_ROUTER_URL = "https://192.168.0.181:8729";
@@ -50,7 +51,10 @@ function formatMikrotikDuration(seconds) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+    2,
+    "0"
+  )}:${String(secs).padStart(2, "0")}`;
 }
 
 // =============================================================================
@@ -64,10 +68,14 @@ async function runTests() {
     // Test 1: Encryption Key Setup
     // ============================================
     console.log("🔧 Test 1: Encryption Key Setup");
-    console.log(`   ROUTER_PASSWORD_KEY (hex): ${ENCRYPTION_KEY_HEX.substring(0, 20)}...`);
+    console.log(
+      `   ROUTER_PASSWORD_KEY (hex): ${ENCRYPTION_KEY_HEX.substring(0, 20)}...`
+    );
     console.log(`   Key buffer length: ${ENCRYPTION_KEY.length} bytes`);
     if (ENCRYPTION_KEY.length !== 32) {
-      throw new Error(`Invalid key length: expected 32 bytes, got ${ENCRYPTION_KEY.length}`);
+      throw new Error(
+        `Invalid key length: expected 32 bytes, got ${ENCRYPTION_KEY.length}`
+      );
     }
     console.log("✅ Encryption key loaded (32 bytes)\n");
 
@@ -80,7 +88,7 @@ async function runTests() {
     console.log(`   Encrypted: ${encrypted.substring(0, 50)}...`);
     const decrypted = decryptPassword(encrypted);
     console.log(`   Decrypted: ${decrypted}`);
-    
+
     if (decrypted === TEST_ROUTER_PASSWORD) {
       console.log("✅ Password encryption/decryption working\n");
     } else {
@@ -94,7 +102,7 @@ async function runTests() {
     const url = new URL(TEST_ROUTER_URL);
     const host = url.hostname;
     const port = parseInt(url.port) || 8729;
-    
+
     console.log(`   Host: ${host}`);
     console.log(`   Port: ${port}`);
     console.log(`   Username: ${TEST_ROUTER_USERNAME}`);
@@ -126,11 +134,15 @@ async function runTests() {
     // Test 5: Check Hotspot Configuration
     // ============================================
     console.log("📋 Test 5: Check Hotspot Configuration");
-    const hotspots = await api.write("/ip/hotspot/print", ["=.proplist=name,interface,disabled"]);
+    const hotspots = await api.write("/ip/hotspot/print", [
+      "=.proplist=name,interface,disabled",
+    ]);
     if (hotspots && hotspots.length > 0) {
       console.log(`   Found ${hotspots.length} hotspot(s):`);
       hotspots.forEach((h) => {
-        console.log(`   - ${h.name} on ${h.interface} (disabled: ${h.disabled || 'no'})`);
+        console.log(
+          `   - ${h.name} on ${h.interface} (disabled: ${h.disabled || "no"})`
+        );
       });
       console.log("✅ Hotspot configuration verified\n");
     } else {
@@ -154,7 +166,9 @@ async function runTests() {
     ];
 
     const createResult = await api.write("/ip/hotspot/user/add", params);
-    console.log(`✅ User created successfully (ID: ${createResult || 'created'})\n`);
+    console.log(
+      `✅ User created successfully (ID: ${createResult || "created"})\n`
+    );
 
     // ============================================
     // Test 7: Verify User Exists
