@@ -5,7 +5,7 @@ import HotspotLocation from "@/models/HotspotLocation";
 import HotspotSession from "@/models/HotspotSession";
 import { activateHotspotUser } from "@/lib/mikrotik";
 import { normalizeMac } from "@/lib/utils";
-import { apiResponse } from "@/lib/apiResponse";
+import { json, badRequest, notFound } from "@/lib/apiResponse";
 
 /**
  * POST /api/v1/portal/activate-session
@@ -21,23 +21,23 @@ export async function POST(request) {
     const { orderReference } = body;
 
     if (!orderReference) {
-      return apiResponse.error("Order reference is required", 400);
+      return badRequest("Order reference is required");
     }
 
     // Find the transaction
     const tx = await Transaction.findOne({ orderReference });
     if (!tx) {
-      return apiResponse.error("Transaction not found", 404);
+      return notFound("Transaction not found");
     }
 
     // Check if payment was successful
     if (tx.status !== "Completed") {
-      return apiResponse.error("Payment not completed", 400);
+      return badRequest("Payment not completed");
     }
 
     // If already activated, return success
     if (tx.activationStatus === "Activated") {
-      return apiResponse.success({
+      return json({
         message: "Already activated",
         activationStatus: "Activated",
         activatedAt: tx.activatedAt,
@@ -56,28 +56,28 @@ export async function POST(request) {
       tx.activationStatus = "Failed";
       tx.activationError = "Package not found";
       await tx.save();
-      return apiResponse.error("Package not found", 404);
+      return notFound("Package not found");
     }
 
     if (!pkg.durationMinutes) {
       tx.activationStatus = "Failed";
       tx.activationError = "Package missing duration";
       await tx.save();
-      return apiResponse.error("Package configuration error", 500);
+      return json({ error: "Package configuration error" }, 500);
     }
 
     if (!tx.customerMacAddress) {
       tx.activationStatus = "Failed";
       tx.activationError = "MAC address missing";
       await tx.save();
-      return apiResponse.error("MAC address not found in transaction", 400);
+      return badRequest("MAC address not found in transaction");
     }
 
     if (!location) {
       tx.activationStatus = "Failed";
       tx.activationError = "Location not found";
       await tx.save();
-      return apiResponse.error("Hotspot location not found", 404);
+      return notFound("Hotspot location not found");
     }
 
     if (
@@ -88,7 +88,7 @@ export async function POST(request) {
       tx.activationStatus = "Failed";
       tx.activationError = "Router API credentials not configured";
       await tx.save();
-      return apiResponse.error("Router not configured for API access", 500);
+      return json({ error: "Router not configured for API access" }, 500);
     }
 
     const sessionSeconds = Math.max(1, Number(pkg.durationMinutes) * 60);
@@ -137,7 +137,7 @@ export async function POST(request) {
 
       console.log("✅ Manual activation completed successfully");
 
-      return apiResponse.success({
+      return json({
         message: "Activation successful",
         activationStatus: "Retried",
         activatedAt: tx.activatedAt,
@@ -149,13 +149,13 @@ export async function POST(request) {
       tx.activationError = activationResult.error;
       await tx.save();
 
-      return apiResponse.error(
-        `Activation failed: ${activationResult.error}`,
+      return json(
+        { error: `Activation failed: ${activationResult.error}` },
         500
       );
     }
   } catch (error) {
     console.error("❌ Manual activation exception:", error);
-    return apiResponse.error(error.message, 500);
+    return json({ error: error.message }, 500);
   }
 }
