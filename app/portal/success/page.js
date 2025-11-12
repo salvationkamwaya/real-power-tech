@@ -14,6 +14,9 @@ function PortalSuccessContent() {
   const [loginAttempted, setLoginAttempted] = useState(false);
   const [manualLoginClicked, setManualLoginClicked] = useState(false);
   const [mac, setMac] = useState(null); // MAC from transaction API (most reliable source)
+  const [activationStatus, setActivationStatus] = useState("Pending"); // Track activation status
+  const [activationError, setActivationError] = useState(null); // Track activation error
+  const [retrying, setRetrying] = useState(false); // Track retry state
 
   // Try to get MAC from localStorage as additional fallback
   useEffect(() => {
@@ -66,6 +69,38 @@ function PortalSuccessContent() {
     triggerHotspotLogin();
   };
 
+  // Handle retry activation
+  const handleRetryActivation = async () => {
+    if (!orderReference) return;
+
+    setRetrying(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/v1/portal/activate-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderReference }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setActivationStatus("Activated");
+        setActivationError(null);
+        console.log("✅ Activation retry successful");
+      } else {
+        setError(data.message || "Activation failed");
+        console.error("❌ Activation retry failed:", data.message);
+      }
+    } catch (e) {
+      setError(e.message || "Failed to retry activation");
+      console.error("❌ Activation retry exception:", e);
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   useEffect(() => {
     let timer;
     let attempts = 0;
@@ -81,6 +116,14 @@ function PortalSuccessContent() {
         setStatus(j.status);
         if (j.package?.durationMinutes)
           setDurationMinutes(j.package.durationMinutes);
+
+        // Track activation status from API
+        if (j.activationStatus) {
+          setActivationStatus(j.activationStatus);
+        }
+        if (j.activationError) {
+          setActivationError(j.activationError);
+        }
 
         // Extract MAC address from transaction (MOST RELIABLE SOURCE - from database)
         if (j.customerMacAddress) {
@@ -154,52 +197,62 @@ function PortalSuccessContent() {
           </svg>
         </div>
         <h1 className="text-3xl font-semibold mb-2">
-          {status === "Completed"
+          {status === "Completed" && activationStatus === "Activated"
             ? "You are connected!"
+            : status === "Completed" && activationStatus === "Failed"
+            ? "Activation failed"
+            : status === "Completed"
+            ? "Activating your session..."
             : status === "Failed"
             ? "Payment failed"
             : "Finalizing your payment..."}
         </h1>
         {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
+        {activationError && activationStatus === "Failed" && (
+          <div className="text-red-600 text-sm mb-2 bg-red-50 p-3 rounded-lg border border-red-200">
+            ⚠️ {activationError}
+          </div>
+        )}
         <p className="text-muted-foreground">
-          {status === "Completed"
-            ? `Your session is ${durationLabel || "active"}. ${
-                loginAttempted
-                  ? "Connecting you automatically..."
-                  : "You can now access the internet."
-              }`
+          {status === "Completed" && activationStatus === "Activated"
+            ? `Your internet access is now active for ${
+                durationLabel || "the purchased duration"
+              }. You can start browsing!`
+            : status === "Completed" && activationStatus === "Failed"
+            ? "We couldn't activate your session automatically. Please try again using the button below."
+            : status === "Completed"
+            ? "Your payment was successful. We're activating your internet access now..."
             : status === "Failed"
             ? "Your payment could not be completed. Please go back and try again."
             : "Please wait while we confirm your payment. This may take a few seconds."}
         </p>
 
-        {/* Manual Connect Button - shown when payment is completed */}
-        {status === "Completed" && mac && (
+        {/* Retry Activation Button - shown when activation failed */}
+        {status === "Completed" && activationStatus === "Failed" && (
           <div className="mt-6">
             <button
-              onClick={handleManualLogin}
-              disabled={manualLoginClicked}
-              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleRetryActivation}
+              disabled={retrying}
+              className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {manualLoginClicked ? "Connecting..." : "Connect Now"}
+              {retrying ? "Retrying..." : "Retry Activation"}
             </button>
             <p className="text-xs text-muted-foreground mt-2">
-              {loginAttempted
-                ? "Auto-connecting... Click above if not connected in 5 seconds"
-                : "Click to connect to the internet"}
+              Click to retry activating your internet session
             </p>
           </div>
         )}
 
-        {/* Show warning if MAC address is missing */}
-        {status === "Completed" && !mac && (
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              ⚠️ Device information not detected. Please reconnect to the WiFi
-              network to access the internet.
+        {/* Success indicator - shown when activated */}
+        {status === "Completed" && activationStatus === "Activated" && (
+          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-800">
+              ✅ Your internet session is active. You can now browse the web!
             </p>
           </div>
         )}
+
+        {/* Manual Connect Button - REMOVED (no longer needed with MikroTik API) */}
 
         {orderReference && (
           <p className="text-xs text-muted-foreground mt-3">

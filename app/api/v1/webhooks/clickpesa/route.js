@@ -4,8 +4,11 @@ import { clickpesaChecksum } from "@/lib/utils";
 import ServicePackage from "@/models/ServicePackage";
 import RadiusReply from "@/models/RadiusReply";
 import RadiusAuth from "@/models/RadiusAuth";
+import HotspotLocation from "@/models/HotspotLocation";
+import HotspotSession from "@/models/HotspotSession";
 import { normalizeMac } from "@/lib/utils";
 import { rateLimit } from "@/lib/rateLimit";
+import { activateHotspotUser } from "@/lib/mikrotik";
 
 const limit = rateLimit({ windowMs: 10_000, max: 8 }); // 8 events per 10s per key
 
@@ -126,7 +129,110 @@ export async function POST(req) {
 
     console.log("💰 Payment successful - updating transaction to Completed");
 
-    // RADIUS grant (feature-flagged) — only on first completion
+    // MikroTik API activation (instant access) — only on first completion
+    if (transitionedToCompleted) {
+      console.log("🚀 Activating user via MikroTik API");
+      try {
+        const pkg = await ServicePackage.findById(tx.servicePackageId).lean();
+        const location = await HotspotLocation.findById(
+          tx.hotspotLocationId
+        ).lean();
+
+        if (!pkg) {
+          console.error("❌ ServicePackage not found:", tx.servicePackageId);
+          tx.activationStatus = "Failed";
+          tx.activationError = "Package not found";
+        } else if (!pkg.durationMinutes) {
+          console.error("❌ Package missing durationMinutes:", pkg);
+          tx.activationStatus = "Failed";
+          tx.activationError = "Package missing duration";
+        } else if (!tx.customerMacAddress) {
+          console.error("❌ Transaction missing customerMacAddress");
+          tx.activationStatus = "Failed";
+          tx.activationError = "MAC address missing";
+        } else if (!location) {
+          console.error("❌ Hotspot location not found:", tx.hotspotLocationId);
+          tx.activationStatus = "Failed";
+          tx.activationError = "Location not found";
+        } else if (
+          !location.routerApiUrl ||
+          !location.routerApiUsername ||
+          !location.routerApiPassword
+        ) {
+          console.error("❌ Location missing MikroTik API credentials");
+          tx.activationStatus = "Failed";
+          tx.activationError = "Router API credentials not configured";
+        } else {
+          const sessionSeconds = Math.max(1, Number(pkg.durationMinutes) * 60);
+          const username = normalizeMac(tx.customerMacAddress);
+          const expiresAt = new Date(Date.now() + sessionSeconds * 1000);
+
+          console.log("📝 Creating MikroTik hotspot user:", {
+            username,
+            sessionSeconds,
+            packageName: pkg.name,
+            expiresAt: expiresAt.toISOString(),
+          });
+
+          // Activate user on MikroTik router via REST API
+          const activationResult = await activateHotspotUser({
+            routerUrl: location.routerApiUrl,
+            username: location.routerApiUsername,
+            password: location.routerApiPassword,
+            macAddress: username,
+            durationSeconds: sessionSeconds,
+            profile: pkg.mikrotikProfile || "default",
+            rateLimit: pkg.rateLimit || null,
+          });
+
+          if (activationResult.success) {
+            console.log(
+              "✅ MikroTik activation successful:",
+              activationResult.userId
+            );
+
+            // Update transaction with activation details
+            tx.activationStatus = "Activated";
+            tx.activationMethod = "mikrotik-api";
+            tx.activatedAt = new Date();
+            tx.mikrotikUserId = activationResult.userId;
+
+            // Create session tracking record (MongoDB will auto-cleanup via TTL)
+            await HotspotSession.create({
+              username,
+              transactionId: tx._id,
+              hotspotLocationId: tx.hotspotLocationId,
+              startedAt: new Date(),
+              expiresAt,
+              activationMethod: "mikrotik-api",
+              mikrotikUserId: activationResult.userId,
+              status: "Active",
+            });
+            console.log("✅ Session tracking record created");
+
+            console.log("🎉 MikroTik activation completed successfully");
+          } else {
+            console.error(
+              "❌ MikroTik activation failed:",
+              activationResult.error
+            );
+            tx.activationStatus = "Failed";
+            tx.activationError = activationResult.error;
+          }
+        }
+      } catch (e) {
+        console.error("❌ MikroTik activation exception:", e.message);
+        console.error("   Stack:", e.stack);
+        tx.activationStatus = "Failed";
+        tx.activationError = e.message;
+        // Swallow errors to not break webhook ACK; user can retry via success page
+      }
+    }
+
+    /* ========================================
+     * RADIUS FALLBACK - COMMENTED FOR NOW
+     * Uncomment this section for non-MikroTik routers
+     * ========================================
     if (
       transitionedToCompleted &&
       process.env.RADIUS_WRITE_ENABLED === "true"
@@ -216,6 +322,7 @@ export async function POST(req) {
     } else if (transitionedToCompleted) {
       console.log("⚠️ RADIUS writes disabled (RADIUS_WRITE_ENABLED not true)");
     }
+    */
   } else if (incomingFailed) {
     console.log("❌ Payment failed - updating transaction to Failed");
     tx.status = "Failed";

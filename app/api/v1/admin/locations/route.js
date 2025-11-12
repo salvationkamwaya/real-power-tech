@@ -5,6 +5,7 @@ import HotspotLocation from "@/models/HotspotLocation";
 import Partner from "@/models/Partner";
 import { LocationCreateSchema, parsePagination } from "@/lib/validators/admin";
 import { normalizeMac } from "@/lib/utils";
+import { encryptPassword } from "@/lib/encryption";
 
 export async function GET(req) {
   const session = await requireAdminSession(req);
@@ -53,11 +54,18 @@ export async function POST(req) {
   const parsed = LocationCreateSchema.safeParse(body);
   if (!parsed.success) return badRequest(parsed.error.flatten().fieldErrors);
 
-  const { partnerId, routerIdentifier } = parsed.data;
-  
+  const {
+    partnerId,
+    routerIdentifier,
+    routerApiPassword,
+    routerApiUrl,
+    routerApiUsername,
+    activationMethod,
+  } = parsed.data;
+
   // Normalize the router MAC address
   const normalizedRouterMac = normalizeMac(routerIdentifier);
-  
+
   const partner = await Partner.findById(partnerId);
   if (!partner) return badRequest("Invalid partnerId");
 
@@ -66,11 +74,20 @@ export async function POST(req) {
   });
   if (exists) return conflict("Router MAC already registered");
 
+  // Encrypt password if provided
+  const encryptedPassword = routerApiPassword
+    ? await encryptPassword(routerApiPassword)
+    : null;
+
   const created = await HotspotLocation.create({
     name: parsed.data.name,
     routerModel: parsed.data.routerModel,
     routerIdentifier: normalizedRouterMac,
     partnerId,
+    routerApiUrl,
+    routerApiUsername,
+    routerApiPassword: encryptedPassword,
+    activationMethod: activationMethod || "mikrotik-api",
   });
 
   return json(

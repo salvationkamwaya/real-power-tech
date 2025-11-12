@@ -11,6 +11,18 @@ const HotspotLocationSchema = new mongoose.Schema(
       required: true,
     },
     status: { type: String, enum: ["Active", "Inactive"], default: "Active" },
+
+    // Router API access
+    routerApiUrl: String, // e.g., "https://192.168.88.1" or "http://192.168.88.1"
+    routerApiUsername: String, // e.g., "api-admin"
+    routerApiPassword: String, // Encrypted password
+
+    // Activation method preference
+    activationMethod: {
+      type: String,
+      enum: ["mikrotik-api", "radius", "auto"],
+      default: "mikrotik-api",
+    },
   },
   { timestamps: true }
 );

@@ -12,6 +12,14 @@ function EditLocationModal({ open, onClose, initial }) {
   const [name, setName] = useState(initial?.name || "");
   const [status, setStatus] = useState(initial?.status || "Active");
   const [partnerId, setPartnerId] = useState(initial?.partner?.id || "");
+  const [routerApiUrl, setRouterApiUrl] = useState(initial?.routerApiUrl || "");
+  const [routerApiUsername, setRouterApiUsername] = useState(
+    initial?.routerApiUsername || ""
+  );
+  const [routerApiPassword, setRouterApiPassword] = useState(""); // Don't pre-fill password for security
+  const [activationMethod, setActivationMethod] = useState(
+    initial?.activationMethod || "mikrotik-api"
+  );
   const [loading, setLoading] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
@@ -24,16 +32,32 @@ function EditLocationModal({ open, onClose, initial }) {
     setName(initial?.name || "");
     setStatus(initial?.status || "Active");
     setPartnerId(initial?.partner?.id || "");
+    setRouterApiUrl(initial?.routerApiUrl || "");
+    setRouterApiUsername(initial?.routerApiUsername || "");
+    setRouterApiPassword(""); // Don't pre-fill password
+    setActivationMethod(initial?.activationMethod || "mikrotik-api");
   }, [initial]);
 
   if (!open) return null;
 
   const save = async () => {
     setLoading(true);
+    const body = {
+      name,
+      status,
+      partnerId,
+      routerApiUrl,
+      routerApiUsername,
+      activationMethod,
+    };
+    // Only include password if it was entered (to avoid overwriting with empty string)
+    if (routerApiPassword) {
+      body.routerApiPassword = routerApiPassword;
+    }
     const res = await fetch(`/api/v1/admin/locations/${initial.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, status, partnerId }),
+      body: JSON.stringify(body),
     });
     setLoading(false);
     if (!res.ok) {
@@ -89,6 +113,66 @@ function EditLocationModal({ open, onClose, initial }) {
               ))}
             </select>
           </div>
+
+          <hr className="my-2" />
+          <h4 className="text-sm font-semibold text-muted-foreground">
+            MikroTik API Configuration
+          </h4>
+
+          <div>
+            <label className="block text-sm mb-1">Activation Method</label>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={activationMethod}
+              onChange={(e) => setActivationMethod(e.target.value)}
+            >
+              <option value="mikrotik-api">
+                MikroTik REST API (Recommended)
+              </option>
+              <option value="radius">RADIUS</option>
+              <option value="auto">Auto-detect</option>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              MikroTik API provides instant activation without RADIUS setup
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Router API URL</label>
+            <input
+              className="w-full border rounded px-3 py-2"
+              placeholder="https://192.168.88.1"
+              value={routerApiUrl}
+              onChange={(e) => setRouterApiUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              HTTPS URL of the MikroTik router
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Router API Username</label>
+            <input
+              className="w-full border rounded px-3 py-2"
+              placeholder="api-admin"
+              value={routerApiUsername}
+              onChange={(e) => setRouterApiUsername(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Router API Password</label>
+            <input
+              type="password"
+              className="w-full border rounded px-3 py-2"
+              placeholder="Leave empty to keep existing password"
+              value={routerApiPassword}
+              onChange={(e) => setRouterApiPassword(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Password is encrypted before storage
+            </p>
+          </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button className="px-3 py-2 rounded-md border" onClick={onClose}>
@@ -129,6 +213,10 @@ function CreateLocationModal({ open, onClose }) {
   const [model, setModel] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [partnerId, setPartnerId] = useState("");
+  const [routerApiUrl, setRouterApiUrl] = useState("");
+  const [routerApiUsername, setRouterApiUsername] = useState("");
+  const [routerApiPassword, setRouterApiPassword] = useState("");
+  const [activationMethod, setActivationMethod] = useState("mikrotik-api");
   const [loading, setLoading] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
@@ -149,6 +237,10 @@ function CreateLocationModal({ open, onClose }) {
         routerModel: model,
         routerIdentifier: identifier,
         partnerId,
+        routerApiUrl,
+        routerApiUsername,
+        routerApiPassword,
+        activationMethod,
       }),
     });
     setLoading(false);
@@ -217,6 +309,69 @@ function CreateLocationModal({ open, onClose }) {
                 </option>
               ))}
             </select>
+          </div>
+
+          <hr className="my-2" />
+          <h4 className="text-sm font-semibold text-muted-foreground">
+            MikroTik API Configuration
+          </h4>
+
+          <div>
+            <label className="block text-sm mb-1">Activation Method</label>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={activationMethod}
+              onChange={(e) => setActivationMethod(e.target.value)}
+            >
+              <option value="mikrotik-api">
+                MikroTik REST API (Recommended)
+              </option>
+              <option value="radius">RADIUS</option>
+              <option value="auto">Auto-detect</option>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              MikroTik API provides instant activation without RADIUS setup
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Router API URL</label>
+            <input
+              className="w-full border rounded px-3 py-2"
+              placeholder="https://192.168.88.1"
+              value={routerApiUrl}
+              onChange={(e) => setRouterApiUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              HTTPS URL of the MikroTik router (usually https://192.168.88.1)
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Router API Username</label>
+            <input
+              className="w-full border rounded px-3 py-2"
+              placeholder="api-admin"
+              value={routerApiUsername}
+              onChange={(e) => setRouterApiUsername(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Create a user with API access on the router
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Router API Password</label>
+            <input
+              type="password"
+              className="w-full border rounded px-3 py-2"
+              placeholder="Enter API password"
+              value={routerApiPassword}
+              onChange={(e) => setRouterApiPassword(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Password is encrypted before storage
+            </p>
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">

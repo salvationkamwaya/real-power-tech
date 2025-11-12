@@ -5,6 +5,7 @@ import HotspotLocation from "@/models/HotspotLocation";
 import Partner from "@/models/Partner";
 import { LocationUpdateSchema } from "@/lib/validators/admin";
 import { normalizeMac } from "@/lib/utils";
+import { encryptPassword } from "@/lib/encryption";
 
 export async function PUT(req, ctx) {
   const session = await requireAdminSession(req);
@@ -24,6 +25,13 @@ export async function PUT(req, ctx) {
   const updateData = { ...parsed.data };
   if (updateData.routerIdentifier) {
     updateData.routerIdentifier = normalizeMac(updateData.routerIdentifier);
+  }
+
+  // Encrypt password if it's being updated
+  if (updateData.routerApiPassword) {
+    updateData.routerApiPassword = await encryptPassword(
+      updateData.routerApiPassword
+    );
   }
 
   const updated = await HotspotLocation.findByIdAndUpdate(

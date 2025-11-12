@@ -162,9 +162,8 @@ window.localStorage.setItem('customerMacAddress', mac)
 
 **Authentication:**
 - Secret Key: `a53c30f7619ffcc7530633435670d2a28d575eb7030a1bcf6c2f3a9b8ea0ad8b`
-- ✅ **ENABLED** - Secret validation is active (line 49: checks if provided key matches environment variable)
-- All RADIUS requests must include `?key={secret}` in URL or `x-radius-secret` header
-- Production-ready and secure
+- Currently DISABLED for testing (line 48: `if (secret)` means it's bypassed)
+- **TODO:** Re-enable for production security
 
 **Performance Optimizations Implemented:**
 1. **In-Memory Caching** - 30-second TTL
@@ -1057,6 +1056,13 @@ Watch for Access-Request packets when login is attempted.
 ```
 
 Check if MikroTik is sending RADIUS packets at all.
+
+### Priority 4: Re-enable Security
+
+Once working, re-enable RADIUS secret authentication:
+
+**File:** `/app/api/v1/radius/authorize/route.js`  
+**Line 48:** Change `if (secret)` to `if (true)` or remove the condition entirely
 
 ---
 

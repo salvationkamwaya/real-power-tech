@@ -23,6 +23,21 @@ const TransactionSchema = new mongoose.Schema(
     orderReference: { type: String, index: true },
     paymentReference: String,
     webhookPayload: mongoose.Schema.Types.Mixed,
+
+    // Activation tracking
+    activationStatus: {
+      type: String,
+      enum: ["Pending", "Activated", "Failed", "Retried"],
+      default: "Pending",
+    },
+    activationMethod: {
+      type: String,
+      enum: ["mikrotik-api", "radius", "manual"],
+      default: "mikrotik-api",
+    },
+    activationError: String,
+    activatedAt: Date,
+    mikrotikUserId: String, // User ID returned by MikroTik (e.g., "*1A")
   },
   { timestamps: true }
 );
