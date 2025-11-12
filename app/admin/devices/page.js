@@ -70,131 +70,133 @@ function EditLocationModal({ open, onClose, initial }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 grid place-items-center z-50">
-      <div className="w-full max-w-lg bg-card text-card-foreground border rounded-md shadow p-5">
-        <div className="flex items-center justify-between mb-4">
+    <div className="fixed inset-0 bg-black/30 grid place-items-center z-50 p-4">
+      <div className="w-full max-w-lg bg-card text-card-foreground border rounded-md shadow max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-card border-b p-5 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Edit Location</h3>
           <button className="text-sm hover:underline" onClick={onClose}>
             Close
           </button>
         </div>
-        <div className="grid gap-3">
-          <div>
-            <label className="block text-sm mb-1">Location Name</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Status</label>
-            <select
-              className="w-full border rounded px-3 py-2"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option>Active</option>
-              <option>Inactive</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Assign to Partner</label>
-            <select
-              className="w-full border rounded px-3 py-2"
-              value={partnerId}
-              onChange={(e) => setPartnerId(e.target.value)}
-            >
-              <option value="">Select a Partner...</option>
-              {(partners?.data || []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.firstName} {p.lastName}
+        <div className="p-5">
+          <div className="grid gap-3">
+            <div>
+              <label className="block text-sm mb-1">Location Name</label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Status</label>
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Assign to Partner</label>
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={partnerId}
+                onChange={(e) => setPartnerId(e.target.value)}
+              >
+                <option value="">Select a Partner...</option>
+                {(partners?.data || []).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.firstName} {p.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <hr className="my-2" />
+            <h4 className="text-sm font-semibold text-muted-foreground">
+              MikroTik API Configuration
+            </h4>
+
+            <div>
+              <label className="block text-sm mb-1">Activation Method</label>
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={activationMethod}
+                onChange={(e) => setActivationMethod(e.target.value)}
+              >
+                <option value="mikrotik-api">
+                  MikroTik REST API (Recommended)
                 </option>
-              ))}
-            </select>
+                <option value="radius">RADIUS</option>
+                <option value="auto">Auto-detect</option>
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                MikroTik API provides instant activation without RADIUS setup
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1">Router API URL</label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                placeholder="https://192.168.88.1"
+                value={routerApiUrl}
+                onChange={(e) => setRouterApiUrl(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                HTTPS URL of the MikroTik router
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1">Router API Username</label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                placeholder="api-admin"
+                value={routerApiUsername}
+                onChange={(e) => setRouterApiUsername(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1">Router API Password</label>
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                placeholder="Leave empty to keep existing password"
+                value={routerApiPassword}
+                onChange={(e) => setRouterApiPassword(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Password is encrypted before storage
+              </p>
+            </div>
           </div>
-
-          <hr className="my-2" />
-          <h4 className="text-sm font-semibold text-muted-foreground">
-            MikroTik API Configuration
-          </h4>
-
-          <div>
-            <label className="block text-sm mb-1">Activation Method</label>
-            <select
-              className="w-full border rounded px-3 py-2"
-              value={activationMethod}
-              onChange={(e) => setActivationMethod(e.target.value)}
+          <div className="flex justify-end gap-2 mt-5">
+            <button className="px-3 py-2 rounded-md border" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              className="px-3 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+              disabled={loading || !name || !partnerId}
+              onClick={async () => {
+                const ok = await save();
+                if (ok) {
+                  mutate(
+                    (key) =>
+                      typeof key === "string" &&
+                      key.startsWith("/api/v1/admin/locations")
+                  );
+                  onClose();
+                }
+              }}
             >
-              <option value="mikrotik-api">
-                MikroTik REST API (Recommended)
-              </option>
-              <option value="radius">RADIUS</option>
-              <option value="auto">Auto-detect</option>
-            </select>
-            <p className="text-xs text-muted-foreground mt-1">
-              MikroTik API provides instant activation without RADIUS setup
-            </p>
+              {loading ? "Saving..." : "Save"}
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm mb-1">Router API URL</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              placeholder="https://192.168.88.1"
-              value={routerApiUrl}
-              onChange={(e) => setRouterApiUrl(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              HTTPS URL of the MikroTik router
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Router API Username</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              placeholder="api-admin"
-              value={routerApiUsername}
-              onChange={(e) => setRouterApiUsername(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Router API Password</label>
-            <input
-              type="password"
-              className="w-full border rounded px-3 py-2"
-              placeholder="Leave empty to keep existing password"
-              value={routerApiPassword}
-              onChange={(e) => setRouterApiPassword(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Password is encrypted before storage
-            </p>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-5">
-          <button className="px-3 py-2 rounded-md border" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className="px-3 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
-            disabled={loading || !name || !partnerId}
-            onClick={async () => {
-              const ok = await save();
-              if (ok) {
-                mutate(
-                  (key) =>
-                    typeof key === "string" &&
-                    key.startsWith("/api/v1/admin/locations")
-                );
-                onClose();
-              }
-            }}
-          >
-            {loading ? "Saving..." : "Save"}
-          </button>
         </div>
       </div>
       <AlertModal
@@ -258,9 +260,9 @@ function CreateLocationModal({ open, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 grid place-items-center z-50">
-      <div className="w-full max-w-lg bg-card text-card-foreground border rounded-md shadow p-5">
-        <div className="flex items-center justify-between mb-4">
+    <div className="fixed inset-0 bg-black/30 grid place-items-center z-50 p-4">
+      <div className="w-full max-w-lg bg-card text-card-foreground border rounded-md shadow max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-card border-b p-5 flex items-center justify-between">
           <h3 className="text-lg font-semibold">
             Register New Hotspot Location
           </h3>
@@ -268,133 +270,135 @@ function CreateLocationModal({ open, onClose }) {
             Close
           </button>
         </div>
-        <div className="grid gap-3">
-          <div>
-            <label className="block text-sm mb-1">Location Name</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Router Model</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">
-              Router Identifier (MAC)
-            </label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Assign to Partner</label>
-            <select
-              className="w-full border rounded px-3 py-2"
-              value={partnerId}
-              onChange={(e) => setPartnerId(e.target.value)}
-            >
-              <option value="">Select a Partner...</option>
-              {(partners?.data || []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.firstName} {p.lastName}
+        <div className="p-5">
+          <div className="grid gap-3">
+            <div>
+              <label className="block text-sm mb-1">Location Name</label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Router Model</label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">
+                Router Identifier (MAC)
+              </label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Assign to Partner</label>
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={partnerId}
+                onChange={(e) => setPartnerId(e.target.value)}
+              >
+                <option value="">Select a Partner...</option>
+                {(partners?.data || []).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.firstName} {p.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <hr className="my-2" />
+            <h4 className="text-sm font-semibold text-muted-foreground">
+              MikroTik API Configuration
+            </h4>
+
+            <div>
+              <label className="block text-sm mb-1">Activation Method</label>
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={activationMethod}
+                onChange={(e) => setActivationMethod(e.target.value)}
+              >
+                <option value="mikrotik-api">
+                  MikroTik REST API (Recommended)
                 </option>
-              ))}
-            </select>
+                <option value="radius">RADIUS</option>
+                <option value="auto">Auto-detect</option>
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                MikroTik API provides instant activation without RADIUS setup
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1">Router API URL</label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                placeholder="https://192.168.88.1"
+                value={routerApiUrl}
+                onChange={(e) => setRouterApiUrl(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                HTTPS URL of the MikroTik router (usually https://192.168.88.1)
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1">Router API Username</label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                placeholder="api-admin"
+                value={routerApiUsername}
+                onChange={(e) => setRouterApiUsername(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Create a user with API access on the router
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1">Router API Password</label>
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                placeholder="Enter API password"
+                value={routerApiPassword}
+                onChange={(e) => setRouterApiPassword(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Password is encrypted before storage
+              </p>
+            </div>
           </div>
-
-          <hr className="my-2" />
-          <h4 className="text-sm font-semibold text-muted-foreground">
-            MikroTik API Configuration
-          </h4>
-
-          <div>
-            <label className="block text-sm mb-1">Activation Method</label>
-            <select
-              className="w-full border rounded px-3 py-2"
-              value={activationMethod}
-              onChange={(e) => setActivationMethod(e.target.value)}
+          <div className="flex justify-end gap-2 mt-5">
+            <button className="px-3 py-2 rounded-md border" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              className="px-3 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+              disabled={loading || !name || !identifier || !partnerId}
+              onClick={async () => {
+                const ok = await save();
+                if (ok) {
+                  mutate(
+                    (key) =>
+                      typeof key === "string" &&
+                      key.startsWith("/api/v1/admin/locations")
+                  );
+                  onClose();
+                }
+              }}
             >
-              <option value="mikrotik-api">
-                MikroTik REST API (Recommended)
-              </option>
-              <option value="radius">RADIUS</option>
-              <option value="auto">Auto-detect</option>
-            </select>
-            <p className="text-xs text-muted-foreground mt-1">
-              MikroTik API provides instant activation without RADIUS setup
-            </p>
+              {loading ? "Saving..." : "Save Location"}
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm mb-1">Router API URL</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              placeholder="https://192.168.88.1"
-              value={routerApiUrl}
-              onChange={(e) => setRouterApiUrl(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              HTTPS URL of the MikroTik router (usually https://192.168.88.1)
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Router API Username</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              placeholder="api-admin"
-              value={routerApiUsername}
-              onChange={(e) => setRouterApiUsername(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Create a user with API access on the router
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Router API Password</label>
-            <input
-              type="password"
-              className="w-full border rounded px-3 py-2"
-              placeholder="Enter API password"
-              value={routerApiPassword}
-              onChange={(e) => setRouterApiPassword(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Password is encrypted before storage
-            </p>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-5">
-          <button className="px-3 py-2 rounded-md border" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className="px-3 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
-            disabled={loading || !name || !identifier || !partnerId}
-            onClick={async () => {
-              const ok = await save();
-              if (ok) {
-                mutate(
-                  (key) =>
-                    typeof key === "string" &&
-                    key.startsWith("/api/v1/admin/locations")
-                );
-                onClose();
-              }
-            }}
-          >
-            {loading ? "Saving..." : "Save Location"}
-          </button>
         </div>
       </div>
       <AlertModal
