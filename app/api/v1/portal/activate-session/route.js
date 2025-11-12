@@ -102,25 +102,23 @@ export async function POST(request) {
       expiresAt: expiresAt.toISOString(),
     });
 
-    // Activate user on MikroTik router via REST API
+    // Activate user on MikroTik router via Binary API
     const activationResult = await activateHotspotUser({
-      routerUrl: location.routerApiUrl,
-      username: location.routerApiUsername,
-      password: location.routerApiPassword,
-      macAddress: username,
-      durationSeconds: sessionSeconds,
-      profile: pkg.mikrotikProfile || "default",
+      locationId: tx.hotspotLocationId.toString(),
+      mac: username,
+      sessionSeconds,
       rateLimit: pkg.rateLimit || null,
+      orderReference: tx.orderReference,
     });
 
     if (activationResult.success) {
-      console.log("✅ Manual activation successful:", activationResult.userId);
+      console.log("✅ Manual activation successful:", activationResult.mikrotikUserId);
 
       // Update transaction with activation details
       tx.activationStatus = "Retried"; // Mark as retried to distinguish from webhook activation
       tx.activationMethod = "mikrotik-api";
       tx.activatedAt = new Date();
-      tx.mikrotikUserId = activationResult.userId;
+      tx.mikrotikUserId = activationResult.mikrotikUserId;
       await tx.save();
 
       // Create session tracking record (MongoDB will auto-cleanup via TTL)
@@ -131,7 +129,7 @@ export async function POST(request) {
         startedAt: new Date(),
         expiresAt,
         activationMethod: "mikrotik-api",
-        mikrotikUserId: activationResult.userId,
+        mikrotikUserId: activationResult.mikrotikUserId,
         status: "Active",
       });
 
