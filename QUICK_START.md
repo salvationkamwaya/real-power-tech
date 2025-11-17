@@ -7,6 +7,7 @@
 **File to upload:** `mikrotik-login-auth.html` (in project root)
 
 **Quickest method using WinBox:**
+
 ```
 1. Download WinBox (if not installed)
 2. Connect to 192.168.88.1
@@ -18,6 +19,7 @@
 ```
 
 **Or use SCP (command line):**
+
 ```bash
 # From project directory
 scp mikrotik-login-auth.html admin@192.168.88.1:
@@ -30,16 +32,19 @@ ssh admin@192.168.88.1
 ### 2. Verify Upload (1 minute)
 
 **SSH to router:**
+
 ```bash
 ssh admin@192.168.88.1
 ```
 
 **Check file exists:**
+
 ```
 /file print where name="hotspot/login-auth.html"
 ```
 
 **Should show:**
+
 ```
 17  hotspot/login-auth.html  .html file  [size]  [date]
 ```
@@ -47,6 +52,7 @@ ssh admin@192.168.88.1
 ### 3. Test End-to-End (5 minutes)
 
 **Using your phone:**
+
 1. Connect to WiFi network
 2. Turn OFF mobile data
 3. Open browser → Try google.com
@@ -63,12 +69,14 @@ ssh admin@192.168.88.1
 ### 4. Verify on Router (1 minute)
 
 **Check active sessions:**
+
 ```bash
 ssh admin@192.168.88.1
 /ip hotspot active print
 ```
 
 **Should see:**
+
 ```
  # USER        ADDRESS      MAC-ADDRESS    LOGIN-BY  UPTIME
  0 AA:BB:C... 192.168.88.x AA:BB:CC:DD... http-pap  1m30s
@@ -81,11 +89,13 @@ ssh admin@192.168.88.1
 ## 🎯 What Changed
 
 ### Before (Not Working ❌)
+
 ```
 Payment → User created → Success page → STUCK (no internet)
 ```
 
 ### After (Working ✅)
+
 ```
 Payment → User created → Success page waits for activation
         → Redirects to login-auth.html → Auto-submits login
@@ -97,22 +107,28 @@ Payment → User created → Success page waits for activation
 ## ❌ If Something Goes Wrong
 
 ### User created but no internet
+
 **Check:**
+
 ```bash
 /ip hotspot active print  # Should see user here
 ```
 
 **If empty:**
+
 - login-auth.html not uploaded correctly
 - Success page didn't redirect
 - JavaScript error in browser
 
 ### "This site can't be reached"
+
 **This is NORMAL before authentication!**
 Only concerning if happens AFTER payment.
 
 ### Payment works but user not created
+
 **Check webhook logs:**
+
 - Go to Vercel dashboard
 - Check function logs for `/api/v1/webhooks/clickpesa`
 - Look for activation errors
@@ -121,14 +137,14 @@ Only concerning if happens AFTER payment.
 
 ## 📊 Timeline Expectations
 
-| Step | Expected Time |
-|------|---------------|
-| Payment to webhook | 1-2 seconds |
-| User creation | 1-2 seconds |
-| Success page polling | 2-5 seconds |
-| Auto-redirect | Instant |
-| Login authentication | 1-2 seconds |
-| **Total** | **5-11 seconds** |
+| Step                 | Expected Time    |
+| -------------------- | ---------------- |
+| Payment to webhook   | 1-2 seconds      |
+| User creation        | 1-2 seconds      |
+| Success page polling | 2-5 seconds      |
+| Auto-redirect        | Instant          |
+| Login authentication | 1-2 seconds      |
+| **Total**            | **5-11 seconds** |
 
 If > 30 seconds, something is wrong.
 
@@ -150,6 +166,7 @@ If > 30 seconds, something is wrong.
 ## 🆘 Emergency Commands
 
 **Check everything at once:**
+
 ```bash
 ssh admin@192.168.88.1
 

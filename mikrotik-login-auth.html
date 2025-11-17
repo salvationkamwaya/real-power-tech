@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Authenticating...</title>
     <style>
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -18,7 +19,7 @@
         background: white;
         padding: 2rem;
         border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         max-width: 400px;
       }
       .spinner {
@@ -31,8 +32,12 @@
         margin: 0 auto 1rem;
       }
       @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
       h1 {
         color: #333;
@@ -54,7 +59,13 @@
     </div>
 
     <!-- Auto-submit login form -->
-    <form id="loginForm" name="login" action="/login" method="post" style="display:none;">
+    <form
+      id="loginForm"
+      name="login"
+      action="/login"
+      method="post"
+      style="display: none"
+    >
       <input type="hidden" name="username" value="$(mac)" />
       <input type="hidden" name="password" value="$(mac)" />
       <input type="hidden" name="dst" value="$(link-orig)" />
@@ -63,9 +74,9 @@
 
     <script>
       // Auto-submit the form immediately on page load
-      window.onload = function() {
-        console.log('Auto-submitting login form for MAC authentication');
-        document.getElementById('loginForm').submit();
+      window.onload = function () {
+        console.log("Auto-submitting login form for MAC authentication");
+        document.getElementById("loginForm").submit();
       };
     </script>
   </body>

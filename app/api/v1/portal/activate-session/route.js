@@ -112,7 +112,10 @@ export async function POST(request) {
     });
 
     if (activationResult.success) {
-      console.log("✅ Manual activation successful:", activationResult.mikrotikUserId);
+      console.log(
+        "✅ Manual activation successful:",
+        activationResult.mikrotikUserId
+      );
 
       // Update transaction with activation details
       tx.activationStatus = "Retried"; // Mark as retried to distinguish from webhook activation

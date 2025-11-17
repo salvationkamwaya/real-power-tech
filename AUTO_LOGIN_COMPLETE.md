@@ -69,11 +69,13 @@
 ## 📁 Files Created/Modified
 
 ### 1. mikrotik-login-auth.html (NEW)
+
 **Location:** `/home/jestone/projects/clients/real-power-tech/rpt/mikrotik-login-auth.html`
 
 **Purpose:** Auto-submit login form using MikroTik variables
 
 **Key Features:**
+
 - Uses `$(mac)` variable for username and password
 - Uses `$(link-orig)` for destination URL
 - Auto-submits on page load via JavaScript
@@ -82,11 +84,13 @@
 **Must be uploaded to:** `/hotspot/login-auth.html` on MikroTik router
 
 ### 2. app/api/v1/portal/check-status/route.js (NEW)
+
 **Purpose:** API endpoint for polling activation status
 
 **Endpoint:** `GET /api/v1/portal/check-status?order=RPT...`
 
 **Returns:**
+
 ```json
 {
   "activationStatus": "Activated|Failed|Pending",
@@ -97,13 +101,16 @@
 ```
 
 ### 3. app/portal/success/page.js (MODIFIED)
+
 **Changes:**
+
 - Simplified `triggerHotspotLogin()` to redirect instead of form POST
 - Enhanced polling logic to wait for activation before login
 - Increased polling timeout to 60 seconds (30 attempts × 2s)
 - Only redirects when `activationStatus === "Activated"`
 
 **New Flow:**
+
 ```javascript
 // Wait for payment AND activation
 if (status === "Completed" && activationStatus === "Activated") {
@@ -130,6 +137,7 @@ From Perplexity research, these variables are available:
 ### Login Form Requirements
 
 **POST Parameters:**
+
 ```
 username: $(mac)          # MAC address as username
 password: $(mac)          # MAC address as password (for MAC auth)
@@ -142,14 +150,17 @@ popup: true               # Indicate popup login
 ### Hotspot Configuration
 
 **Current Settings:**
+
 ```
 /ip hotspot profile print detail where name=default
 ```
+
 - `login-by=mac,http-pap,mac-cookie`
 - `mac-auth-mode=mac-as-username`
 - `html-directory=hotspot`
 
 **Why MAC auth still needs form submit:**
+
 - `login-by=mac` means MAC CAN be used for auth
 - Does NOT mean automatic authentication
 - User must still trigger the login form
@@ -160,6 +171,7 @@ popup: true               # Indicate popup login
 ## 🚀 Deployment Status
 
 ### ✅ Completed
+
 - [x] Code changes deployed to Vercel
 - [x] Auto-login HTML file created locally
 - [x] Status check API endpoint created
@@ -167,6 +179,7 @@ popup: true               # Indicate popup login
 - [x] Upload instructions documented
 
 ### ⬆️ Pending
+
 - [ ] Upload `mikrotik-login-auth.html` to router
 - [ ] Test end-to-end flow with real payment
 - [ ] Verify user appears in active sessions
@@ -181,12 +194,14 @@ popup: true               # Indicate popup login
 **Choose one method from MIKROTIK_UPLOAD_INSTRUCTIONS.md:**
 
 **Quick method (WinBox):**
+
 1. Open WinBox → Connect to router
 2. Go to Files → Upload
 3. Select `mikrotik-login-auth.html`
 4. Terminal: `/file move mikrotik-login-auth.html hotspot/login-auth.html`
 
 **Verify upload:**
+
 ```bash
 /file print where name="hotspot/login-auth.html"
 :put [/file get hotspot/login-auth.html contents]
@@ -195,11 +210,13 @@ popup: true               # Indicate popup login
 ### 2. Test the Flow
 
 **Test Device Setup:**
+
 1. Connect phone to WiFi network
 2. Turn off mobile data
 3. Try to browse any website
 
 **Expected Behavior:**
+
 1. Redirected to payment portal ✅
 2. Select package and pay
 3. Success page shows "Activating..."
@@ -211,16 +228,19 @@ popup: true               # Indicate popup login
 ### 3. Verification Commands
 
 **Check user was created:**
+
 ```bash
 /ip hotspot user print where name~"[MAC_ADDRESS]"
 ```
 
 **Check active session (CRITICAL - this should now work!):**
+
 ```bash
 /ip hotspot active print
 ```
 
 **Check logs:**
+
 ```bash
 /log print where topics~"hotspot"
 ```
@@ -230,28 +250,35 @@ popup: true               # Indicate popup login
 ## 🐛 Troubleshooting
 
 ### User created but not active
+
 **Symptom:** User in `/ip/hotspot/user` but not in `/ip/hotspot/active`
 
 **Check:**
+
 1. Did success page redirect to login-auth.html?
 2. Is login-auth.html uploaded correctly?
 3. Check browser console for JavaScript errors
 4. Verify MAC address format matches
 
 ### "This site can't be reached" at 192.168.88.1/login
+
 **Cause:** User trying to access login directly (expected before auth)
 
 **Solution:** Should only access via walled garden or after payment redirect
 
 ### Login form doesn't auto-submit
+
 **Check:**
+
 1. JavaScript is enabled in browser
 2. login-auth.html file is correct
 3. Browser console for errors
 4. Try manual test: `window.onload = function() { alert('loaded'); }`
 
 ### Payment works but user not created
+
 **Check:**
+
 1. Webhook received payment: Check Vercel logs
 2. MikroTik API connection: Test with `node test-mikrotik-api.js`
 3. User creation error: Check `activationError` field in transaction
@@ -263,16 +290,19 @@ popup: true               # Indicate popup login
 ### Key Metrics to Track
 
 **Payment Flow:**
+
 - Webhook response time (should be < 2s)
 - User creation success rate
 - Payment → Activation time
 
 **Authentication Flow:**
+
 - Success page → Login redirect time
 - Login form submission success rate
 - User session creation time
 
 **Overall:**
+
 - End-to-end time (payment → internet access)
 - Target: < 10 seconds
 - Acceptable: < 30 seconds
@@ -280,6 +310,7 @@ popup: true               # Indicate popup login
 ### Logs to Monitor
 
 **Vercel Function Logs:**
+
 ```
 Webhook: /api/v1/webhooks/clickpesa
 Activation: activateHotspotUser() function
@@ -287,6 +318,7 @@ Status: /api/v1/portal/check-status
 ```
 
 **MikroTik Logs:**
+
 ```bash
 /log print where topics~"hotspot,info"
 ```
@@ -316,6 +348,7 @@ Status: /api/v1/portal/check-status
 ## ✅ Success Criteria
 
 **The solution is working when:**
+
 1. ✅ Payment completes successfully
 2. ✅ User created in MikroTik (/ip/hotspot/user)
 3. ✅ Success page shows "You are connected!"
