@@ -31,36 +31,23 @@ function PortalSuccessContent() {
     }
   }, [mac]);
 
-  // Auto-login function
+  // Auto-login function - redirects to MikroTik login page which auto-submits
   const triggerHotspotLogin = useCallback(() => {
     if (!mac) {
       console.warn("No MAC address available for login");
       return;
     }
 
-    // Normalize MAC address (uppercase with colons)
-    const normalizedMac = mac.toUpperCase().replace(/[:-]/g, ":");
+    console.log("Redirecting to MikroTik auto-login page for MAC:", mac);
 
-    // MikroTik hotspot login URL (assuming standard IP)
+    // Redirect to MikroTik's login page
+    // The custom login.html will redirect to portal (already done)
+    // But we need to access the login-auth.html page for auto-submit
     const hotspotIP = "192.168.88.1";
-    const loginUrl = `http://${hotspotIP}/login?username=${encodeURIComponent(
-      normalizedMac
-    )}&password=`;
-
-    console.log("Triggering hotspot login for MAC:", normalizedMac);
-
-    // Create hidden iframe to trigger login without leaving the page
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = loginUrl;
-    document.body.appendChild(iframe);
-
-    // Remove iframe after 3 seconds
-    setTimeout(() => {
-      if (iframe.parentNode) {
-        iframe.parentNode.removeChild(iframe);
-      }
-    }, 3000);
+    const authUrl = `http://${hotspotIP}/hotspot/login-auth.html`;
+    
+    // Redirect to the auto-submit login page
+    window.location.href = authUrl;
   }, [mac]);
 
   // Handle manual login button click
@@ -144,24 +131,39 @@ function PortalSuccessContent() {
           }
         }
 
-        // Auto-login when payment is completed and MAC is available
-        if (j.status === "Completed" && !loginAttempted && mac) {
+        // Auto-redirect to login when:
+        // 1. Payment is completed
+        // 2. User is activated in MikroTik
+        // 3. We haven't tried login yet
+        // 4. MAC address is available
+        if (
+          j.status === "Completed" && 
+          j.activationStatus === "Activated" && 
+          !loginAttempted && 
+          mac
+        ) {
           setLoginAttempted(true);
           console.log(
-            "Payment completed, triggering auto-login in 2 seconds..."
+            "Payment completed and user activated, redirecting to auto-login in 2 seconds..."
           );
-          // Wait 2 seconds before auto-login to ensure payment is fully processed
+          // Wait 2 seconds to show success message, then redirect
           setTimeout(() => {
             triggerHotspotLogin();
           }, 2000);
         }
 
-        if (j.status === "Completed" || j.status === "Failed") return; // stop
+        if (j.status === "Completed" || j.status === "Failed") {
+          // Continue polling activation status even if payment is complete
+          // Stop only when activated or failed
+          if (j.activationStatus === "Activated" || j.activationStatus === "Failed") {
+            return; // stop polling
+          }
+        }
       } catch (e) {
         setError((e && e.message) || "Verification failed");
       }
       attempts += 1;
-      if (attempts < 15) {
+      if (attempts < 30) { // Increased from 15 to 30 (60 seconds total)
         timer = setTimeout(fetchStatus, 2000);
       }
     }
