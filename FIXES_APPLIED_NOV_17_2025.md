@@ -9,6 +9,7 @@ Fixed critical MikroTik IP binding error that was causing webhook timeouts and p
 ## 🔴 CRITICAL FIX: IP Binding Query Error
 
 ### Problem
+
 ```
 Error: Tried to process unknown reply: !empty
 Error: Timed out after 10 seconds
@@ -23,15 +24,17 @@ The `node-routeros` library doesn't handle empty query results properly. When qu
 **File:** `/lib/mikrotik.js` (lines 167-210)
 
 **Changed from:**
+
 ```javascript
 // This causes !empty error when no bindings exist
 existingBindings = await api.write("/ip/hotspot/ip-binding/print", [
   `=.proplist=.id,mac-address`,
-  `?mac-address=${mac}`,  // ❌ Query filter causes !empty error
+  `?mac-address=${mac}`, // ❌ Query filter causes !empty error
 ]);
 ```
 
 **Changed to:**
+
 ```javascript
 // Get all bindings and filter in JavaScript (no !empty error)
 const allBindings = await api.write("/ip/hotspot/ip-binding/print", [
@@ -40,13 +43,12 @@ const allBindings = await api.write("/ip/hotspot/ip-binding/print", [
 ]);
 
 if (Array.isArray(allBindings)) {
-  existingBindings = allBindings.filter(
-    (b) => b["mac-address"] === mac
-  );
+  existingBindings = allBindings.filter((b) => b["mac-address"] === mac);
 }
 ```
 
 **Impact:**
+
 - ✅ No more `!empty` errors
 - ✅ IP bindings are created successfully
 - ✅ Auto-authentication works properly
@@ -58,6 +60,7 @@ if (Array.isArray(allBindings)) {
 ## ⚡ PERFORMANCE FIX: Connection Timeout
 
 ### Problem
+
 10-second timeout was too short for some MikroTik operations, causing unnecessary failures.
 
 ### Solution Applied
@@ -65,16 +68,19 @@ if (Array.isArray(allBindings)) {
 **File:** `/lib/mikrotik.js` (line 47)
 
 **Changed from:**
+
 ```javascript
 timeout: 10,  // Too short
 ```
 
 **Changed to:**
+
 ```javascript
 timeout: 15,  // Increased from 10 to 15 seconds for better reliability
 ```
 
 **Impact:**
+
 - ✅ More reliable connections
 - ✅ Handles slower network conditions
 - ✅ Reduces false timeout errors
@@ -84,11 +90,13 @@ timeout: 15,  // Increased from 10 to 15 seconds for better reliability
 ## 🌐 CONFIGURATION FIX: Dynamic Hotspot Gateway IP
 
 ### Problem
+
 Hotspot gateway IP was hardcoded to `192.168.88.1` in the success page, making it impossible to use different router configurations.
 
 ### Solution Applied
 
 **Files Modified:**
+
 1. `/models/HotspotLocation.js` - Added `gatewayIp` field
 2. `/app/api/v1/portal/transactions/[orderReference]/route.js` - Include `gatewayIp` in response
 3. `/app/portal/success/page.js` - Use dynamic `hotspotIP` from API
@@ -96,16 +104,19 @@ Hotspot gateway IP was hardcoded to `192.168.88.1` in the success page, making i
 **Changes:**
 
 1. **Model Update:**
+
 ```javascript
 gatewayIp: { type: String, default: "192.168.88.1" }, // Configurable per location
 ```
 
 2. **API Response:**
+
 ```javascript
 hotspotGatewayIp: tx.hotspotLocationId?.gatewayIp || "192.168.88.1",
 ```
 
 3. **Success Page:**
+
 ```javascript
 const [hotspotIP, setHotspotIP] = useState("192.168.88.1"); // Default fallback
 
@@ -119,6 +130,7 @@ const authUrl = `http://${hotspotIP}/hotspot/login-auth.html`;
 ```
 
 **Impact:**
+
 - ✅ Supports multiple router configurations
 - ✅ Gateway IP configurable per location
 - ✅ Falls back to default if not set
@@ -128,12 +140,12 @@ const authUrl = `http://${hotspotIP}/hotspot/login-auth.html`;
 
 ## 📊 Files Modified
 
-| File | Changes | Lines |
-|------|---------|-------|
-| `/lib/mikrotik.js` | Fixed IP binding query + timeout | 47, 167-210 |
-| `/app/portal/success/page.js` | Dynamic gateway IP support | 6-50 |
-| `/app/api/v1/portal/transactions/[orderReference]/route.js` | Include gateway IP in response | 14, 33 |
-| `/models/HotspotLocation.js` | Add gatewayIp field | 16 |
+| File                                                        | Changes                          | Lines       |
+| ----------------------------------------------------------- | -------------------------------- | ----------- |
+| `/lib/mikrotik.js`                                          | Fixed IP binding query + timeout | 47, 167-210 |
+| `/app/portal/success/page.js`                               | Dynamic gateway IP support       | 6-50        |
+| `/app/api/v1/portal/transactions/[orderReference]/route.js` | Include gateway IP in response   | 14, 33      |
+| `/models/HotspotLocation.js`                                | Add gatewayIp field              | 16          |
 
 ---
 
@@ -185,6 +197,7 @@ After deployment, verify:
 ## 🐛 Error Logs - Before vs After
 
 ### Before (❌ Failing)
+
 ```
 2025-11-17 11:08:05.927 [info] 🔐 Adding IP binding for auto-authentication: 9A:E6:98:FA:9B:9F
 2025-11-17 11:08:06.520 [error] Uncaught Exception: Error: Tried to process unknown reply: !empty
@@ -194,6 +207,7 @@ After deployment, verify:
 ```
 
 ### After (✅ Working)
+
 ```
 2025-11-17 XX:XX:XX.XXX [info] 🔐 Adding IP binding for auto-authentication: 9A:E6:98:FA:9B:9F
 2025-11-17 XX:XX:XX.XXX [info] ℹ️ Found 0 existing IP binding(s) for 9A:E6:98:FA:9B:9F
@@ -235,6 +249,7 @@ After deployment, verify:
 **Next Step:** Deploy to Vercel and test with real payment
 
 **Deployment Command:**
+
 ```bash
 git add .
 git commit -m "fix: resolve MikroTik IP binding !empty error and add dynamic gateway IP"

@@ -16,7 +16,6 @@ const HotspotLocationSchema = new mongoose.Schema(
     routerApiUrl: String, // e.g., "https://192.168.88.1" or "http://192.168.88.1"
     routerApiUsername: String, // e.g., "api-admin"
     routerApiPassword: String, // Encrypted password
-    gatewayIp: { type: String, default: "192.168.88.1" }, // Hotspot gateway IP for login redirect
 
     // Activation method preference
     activationMethod: {

@@ -7,7 +7,6 @@ function PortalSuccessContent() {
   const sp = useSearchParams();
   const orderReference = sp.get("orderReference");
   const fallbackDuration = sp.get("duration");
-  const routerIdentifier = sp.get("routerIdentifier"); // Get router identifier from URL
 
   const [status, setStatus] = useState("Pending");
   const [durationMinutes, setDurationMinutes] = useState(null);
@@ -18,7 +17,6 @@ function PortalSuccessContent() {
   const [activationStatus, setActivationStatus] = useState("Pending"); // Track activation status
   const [activationError, setActivationError] = useState(null); // Track activation error
   const [retrying, setRetrying] = useState(false); // Track retry state
-  const [hotspotIP, setHotspotIP] = useState("192.168.88.1"); // Default fallback
 
   // Try to get MAC from localStorage as additional fallback
   useEffect(() => {
@@ -42,12 +40,15 @@ function PortalSuccessContent() {
 
     console.log("Redirecting to MikroTik auto-login page for MAC:", mac);
 
-    // Use the hotspot IP from state (either from location data or default)
+    // Redirect to MikroTik's login page
+    // The custom login.html will redirect to portal (already done)
+    // But we need to access the login-auth.html page for auto-submit
+    const hotspotIP = "192.168.88.1";
     const authUrl = `http://${hotspotIP}/hotspot/login-auth.html`;
 
     // Redirect to the auto-submit login page
     window.location.href = authUrl;
-  }, [mac, hotspotIP]);
+  }, [mac]);
 
   // Handle manual login button click
   const handleManualLogin = () => {
@@ -128,12 +129,6 @@ function PortalSuccessContent() {
           } catch (e) {
             console.warn("Could not save to localStorage:", e);
           }
-        }
-
-        // Set hotspot gateway IP if available from location
-        if (j.hotspotGatewayIp) {
-          console.log("Hotspot gateway IP from API:", j.hotspotGatewayIp);
-          setHotspotIP(j.hotspotGatewayIp);
         }
 
         // Auto-redirect to login when:

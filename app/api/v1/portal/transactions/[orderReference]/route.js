@@ -13,10 +13,7 @@ export async function GET(req, ctx) {
       path: "servicePackageId",
       select: "name durationMinutes price",
     })
-    .populate({ 
-      path: "hotspotLocationId", 
-      select: "name gatewayIp" // Include gatewayIp for login redirect
-    });
+    .populate({ path: "hotspotLocationId", select: "name" });
   if (!tx) return notFound("Transaction not found");
 
   if (tx.status === "Pending") {
@@ -39,7 +36,6 @@ export async function GET(req, ctx) {
     amount: tx.amount,
     currency: tx.currency,
     customerMacAddress: tx.customerMacAddress || null, // MAC address for login trigger
-    hotspotGatewayIp: tx.hotspotLocationId?.gatewayIp || "192.168.88.1", // Gateway IP for login redirect
     activationStatus: tx.activationStatus || "Pending", // Activation status for UI
     activationMethod: tx.activationMethod || null,
     activatedAt: tx.activatedAt || null,
