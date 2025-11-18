@@ -11,6 +11,7 @@ We have a MikroTik RouterOS 7.20.4 hotspot system with automated payment integra
 ## Our Current Implementation
 
 ### Technology Stack:
+
 - MikroTik RouterOS 7.20.4 (stable)
 - Hotspot configuration: `login-by=mac,http-pap,mac-cookie`
 - User authentication via Binary API (node-routeros)
@@ -27,7 +28,7 @@ if (existingUser) {
   // 2. Update user with new session limit
   await api.write("/ip/hotspot/user/set", [
     `=.id=${existingUser[".id"]}`,
-    `=limit-uptime=00:20:00`,  // New session duration
+    `=limit-uptime=00:20:00`, // New session duration
     `=comment=Order: ${newOrderReference}`,
   ]);
 
@@ -35,7 +36,7 @@ if (existingUser) {
   await api.write("/ip/hotspot/user/reset-counters", [
     `=.id=${existingUser[".id"]}`,
   ]);
-  
+
   // 4. Update IP binding
   await api.write("/ip/hotspot/ip-binding/set", [
     `=.id=${bindingId}`,
@@ -50,12 +51,14 @@ if (existingUser) {
 ### What Happens in Practice:
 
 **First Session (20 minutes):**
+
 ```
 Payment → User created → IP binding created → Login succeeds → Internet works ✅
 Uptime: 0s → 20m (then session expires)
 ```
 
 **Second Session (after first expires):**
+
 ```
 Payment → User updated → Counters reset → IP binding updated → Login FAILS → No internet ❌
 
@@ -72,6 +75,7 @@ But user gets no internet access!
 ### Verified on Router:
 
 After second payment, checking user state:
+
 ```
 /ip hotspot user print detail where name="9A:E6:98:FA:9B:9F"
 
@@ -114,6 +118,7 @@ Results: EMPTY (no active session despite valid credentials)
 ## Why We Used `/ip/hotspot/user/reset-counters`
 
 We discovered that MikroTik tracks **cumulative** uptime across sessions. Without reset:
+
 - First session: uptime=20m, limit=20m → Session works ✅
 - Second session: uptime=20m (from before), NEW limit=20m → Login rejected (uptime already at limit) ❌
 
@@ -124,20 +129,24 @@ So we added the counter reset, which successfully sets `uptime=0s`, but internet
 According to **official MikroTik documentation** and best practices:
 
 1. **What is the standard/recommended approach for handling returning customers in MikroTik hotspot systems?**
+
    - Should we be deleting and recreating users instead of updating them?
    - Is there a "session cleanup" command we're missing?
    - Do we need to manually disconnect/logout the user before updating?
 
 2. **Does `/ip/hotspot/user/reset-counters` actually reset the login eligibility, or just the statistics?**
+
    - Does resetting counters allow a user to login again?
    - Is there a separate command to "reset" a user's login state?
 
 3. **For hotspot systems with recurring purchases, what's the official MikroTik recommendation?**
+
    - Delete user after session expires, recreate on next purchase?
    - Keep user record and update limits (our current approach)?
    - Use dynamic profiles or RADIUS instead?
 
 4. **Could there be a "session lock" or "authentication cache" preventing re-login?**
+
    - Do we need to clear cookies on the hotspot server?
    - Is there a hotspot cache that needs clearing?
    - Does the IP binding need to be deleted and recreated instead of updated?
