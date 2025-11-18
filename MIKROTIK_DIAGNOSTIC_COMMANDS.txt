@@ -1,0 +1,86 @@
+# MikroTik Hotspot Diagnostic Commands
+# Copy and paste these commands one by one into WinBox Terminal
+
+# ========================================
+# 1. CHECK CUSTOM LOGIN FILES
+# ========================================
+echo "=== CHECKING CUSTOM LOGIN FILES ==="
+/file print where name~"login"
+
+# ========================================
+# 2. VIEW LOGIN.HTML CONTENT
+# ========================================
+echo ""
+echo "=== CURRENT LOGIN.HTML CONTENT ==="
+:put [/file get hotspot/login.html contents]
+
+# ========================================
+# 3. CHECK IF LOGIN-AUTH.HTML EXISTS
+# ========================================
+echo ""
+echo "=== CHECKING FOR LOGIN-AUTH.HTML ==="
+/file print where name="hotspot/login-auth.html"
+
+# ========================================
+# 4. VIEW LOGIN-AUTH.HTML CONTENT (if exists)
+# ========================================
+echo ""
+echo "=== LOGIN-AUTH.HTML CONTENT ==="
+:put [/file get hotspot/login-auth.html contents]
+
+# ========================================
+# 5. CHECK HOTSPOT PROFILE CONFIGURATION
+# ========================================
+echo ""
+echo "=== HOTSPOT PROFILE CONFIGURATION ==="
+/ip hotspot profile print detail where name=default
+
+# ========================================
+# 6. CHECK HOTSPOT USERS
+# ========================================
+echo ""
+echo "=== HOTSPOT USERS (Recent RPT orders) ==="
+/ip hotspot user print where comment~"RPT"
+
+# ========================================
+# 7. CHECK ACTIVE SESSIONS (CRITICAL!)
+# ========================================
+echo ""
+echo "=== ACTIVE HOTSPOT SESSIONS ==="
+/ip hotspot active print detail
+
+# ========================================
+# 8. CHECK IP BINDINGS
+# ========================================
+echo ""
+echo "=== IP BINDINGS ==="
+/ip hotspot ip-binding print detail
+
+# ========================================
+# 9. CHECK SPECIFIC USER (9A:E6:98:FA:9B:9F)
+# ========================================
+echo ""
+echo "=== CHECKING SPECIFIC USER: 9A:E6:98:FA:9B:9F ==="
+/ip hotspot user print detail where name="9A:E6:98:FA:9B:9F"
+
+# ========================================
+# 10. CHECK HOTSPOT LOGS (Last 30 lines)
+# ========================================
+echo ""
+echo "=== RECENT HOTSPOT LOGS ==="
+/log print where topics~"hotspot" last 30
+
+# ========================================
+# 11. CHECK WALLED GARDEN (Should allow portal access)
+# ========================================
+echo ""
+echo "=== WALLED GARDEN RULES ==="
+/ip hotspot walled-garden print
+
+# ========================================
+# 12. TRY MANUAL LOGIN TEST
+# ========================================
+echo ""
+echo "=== TO TEST MANUAL LOGIN ==="
+echo "Run this command in terminal (replace with actual IP):"
+echo "/ip hotspot active add user=9A:E6:98:FA:9B:9F address=192.168.88.254 mac-address=9A:E6:98:FA:9B:9F server=hotspot1"
