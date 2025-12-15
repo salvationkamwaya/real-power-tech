@@ -1,0 +1,131 @@
+import { dbConnect } from "@/lib/dbConnect";
+import { badRequest, json, notFound } from "@/lib/apiResponse";
+import ServicePackage from "@/models/ServicePackage";
+import Transaction from "@/models/Transaction";
+import HotspotLocation from "@/models/HotspotLocation";
+import { macRegex } from "@/lib/validators/admin";
+import { normalizeMac } from "@/lib/utils";
+import { previewUssdPush, initiateUssdPush } from "@/lib/clickpesa";
+
+const SUPPORTED_PROVIDERS = new Set(["AIRTEL", "MIX_BY_YASS", "HALOPESA"]);
+
+function newOrderReference() {
+  const ts = Date.now().toString();
+  const rnd = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `RPT${ts}${rnd}`; // strictly alphanumeric
+}
+
+export async function POST(req) {
+  if (process.env.PAYMENT_API_ENABLED !== "true") {
+    return badRequest(
+      "Direct Payment API is disabled. Enable PAYMENT_API_ENABLED=true to use this endpoint."
+    );
+  }
+
+  await dbConnect();
+  const body = await req.json().catch(() => ({}));
+  const {
+    packageId,
+    locationId,
+    customerMacAddress,
+    routerIdentifier,
+    phoneNumber,
+    provider, // "AIRTEL" | "MIX_BY_YASS" | "HALOPESA"
+    fetchSenderDetails = false,
+  } = body || {};
+
+  if (!packageId) return badRequest("packageId is required");
+  if (!phoneNumber)
+    return badRequest("phoneNumber is required (E.164 e.g., 2557XXXXXXXX)");
+  if (!provider || !SUPPORTED_PROVIDERS.has(provider)) {
+    return badRequest(
+      "provider is required and must be one of: AIRTEL, MIX_BY_YASS, HALOPESA"
+    );
+  }
+
+  // Normalize MACs
+  const normalizedCustomerMac = customerMacAddress
+    ? normalizeMac(customerMacAddress)
+    : null;
+  const normalizedRouterMac = routerIdentifier
+    ? normalizeMac(routerIdentifier)
+    : null;
+
+  // Validate normalized MACs
+  if (normalizedCustomerMac && !macRegex.test(normalizedCustomerMac)) {
+    return badRequest("Invalid customerMacAddress (MAC) format");
+  }
+  if (normalizedRouterMac && !macRegex.test(normalizedRouterMac)) {
+    return badRequest("Invalid routerIdentifier (MAC) format");
+  }
+
+  // Basic phone validation (Tanzania E.164: starts with 2557/2556 etc.)
+  if (!/^255\d{9}$/.test(String(phoneNumber))) {
+    return badRequest(
+      "Invalid phoneNumber format. Use E.164 without '+' e.g., 255712345678"
+    );
+  }
+
+  const pkg = await ServicePackage.findById(packageId);
+  if (!pkg || !pkg.isActive) return badRequest("Invalid or inactive packageId");
+
+  // Resolve location
+  let hotspotLocationId = null;
+  if (normalizedRouterMac) {
+    const loc = await HotspotLocation.findOne({
+      routerIdentifier: normalizedRouterMac,
+    }).select("_id");
+    if (!loc) return notFound("Hotspot location not registered");
+    hotspotLocationId = loc._id;
+  } else if (locationId) {
+    hotspotLocationId = locationId;
+  }
+
+  const orderReference = newOrderReference();
+  const currency = process.env.CLICKPESA_CURRENCY || "TZS";
+
+  await Transaction.create({
+    servicePackageId: pkg._id,
+    hotspotLocationId: hotspotLocationId || null,
+    customerMacAddress: normalizedCustomerMac || null,
+    amount: pkg.price,
+    currency,
+    orderReference,
+    status: "Pending",
+    provider,
+    phoneNumber,
+  });
+
+  // Step 1: Preview USSD-PUSH (validate availability)
+  try {
+    await previewUssdPush({
+      amount: String(pkg.price),
+      currency,
+      orderReference,
+      phoneNumber,
+      fetchSenderDetails,
+    });
+  } catch (e) {
+    return badRequest(`Preview failed: ${e.message}`);
+  }
+
+  // Step 2: Initiate USSD-PUSH
+  try {
+    const initResp = await initiateUssdPush({
+      amount: String(pkg.price),
+      currency,
+      orderReference,
+      phoneNumber,
+    });
+
+    return json({
+      orderReference,
+      status: "PENDING",
+      message: "USSD push sent. Please complete payment on your phone.",
+      provider,
+      initResp,
+    });
+  } catch (e) {
+    return badRequest(`Initiate failed: ${e.message}`);
+  }
+}

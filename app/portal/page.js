@@ -15,10 +15,23 @@ function PortalContent({ mac, router }) {
   const [loading, setLoading] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payPhone, setPayPhone] = useState("");
+  const [payProvider, setPayProvider] = useState("AIRTEL");
+  const [selectedPkg, setSelectedPkg] = useState(null);
 
   async function startHosted(pkg) {
     try {
       setLoading(true);
+      const useApi =
+        process.env.NEXT_PUBLIC_PAYMENT_API_ENABLED === "true" ||
+        process.env.PAYMENT_API_ENABLED === "true";
+      if (useApi) {
+        setSelectedPkg(pkg);
+        setPayModalOpen(true);
+        setLoading(false);
+        return;
+      }
       const res = await fetch("/api/v1/portal/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,6 +53,43 @@ function PortalContent({ mac, router }) {
         }
       } catch (_) {}
       window.location.href = j.paymentUrl; // redirect to hosted checkout
+    } catch (e) {
+      setAlertMsg(e.message || "Payment start failed");
+      setAlertOpen(true);
+      setLoading(false);
+    }
+  }
+
+  async function submitDirectPayment() {
+    try {
+      if (!payPhone) throw new Error("Phone number is required");
+      if (!/^255\d{9}$/.test(String(payPhone)))
+        throw new Error("Enter E.164 phone e.g., 255712345678");
+      const res = await fetch("/api/v1/portal/pay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          packageId: selectedPkg?.id,
+          customerMacAddress: mac || undefined,
+          routerIdentifier: router || undefined,
+          phoneNumber: payPhone,
+          provider: payProvider.toUpperCase(),
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || "Payment start failed");
+      }
+      const j = await res.json();
+      try {
+        if (j.orderReference && typeof window !== "undefined") {
+          window.sessionStorage.setItem("lastOrderReference", j.orderReference);
+        }
+      } catch (_) {}
+      setPayModalOpen(false);
+      setSelectedPkg(null);
+      setPayPhone("");
+      setLoading(false);
     } catch (e) {
       setAlertMsg(e.message || "Payment start failed");
       setAlertOpen(true);
@@ -96,6 +146,60 @@ function PortalContent({ mac, router }) {
           ))
         )}
       </div>
+
+      {payModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <div className="text-xl font-semibold mb-4">Complete Payment</div>
+            <div className="grid gap-3">
+              <label className="grid gap-1">
+                <span className="text-sm text-muted-foreground">
+                  Mobile Money Provider
+                </span>
+                <select
+                  value={payProvider}
+                  onChange={(e) => setPayProvider(e.target.value)}
+                  className="border rounded px-3 py-2"
+                >
+                  <option value="AIRTEL">Airtel Money</option>
+                  <option value="MIX_BY_YASS">Mix by Yass</option>
+                  <option value="HALOPESA">Halo Pesa</option>
+                </select>
+              </label>
+              <label className="grid gap-1">
+                <span className="text-sm text-muted-foreground">
+                  Phone Number (E.164 without +)
+                </span>
+                <input
+                  type="tel"
+                  value={payPhone}
+                  onChange={(e) => setPayPhone(e.target.value)}
+                  placeholder="255712345678"
+                  className="border rounded px-3 py-2"
+                />
+              </label>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button
+                className="px-4 py-2 border rounded"
+                onClick={() => {
+                  setPayModalOpen(false);
+                  setSelectedPkg(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-primary text-white rounded"
+                onClick={submitDirectPayment}
+                disabled={loading || !selectedPkg}
+              >
+                Pay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AlertModal
         open={alertOpen}
