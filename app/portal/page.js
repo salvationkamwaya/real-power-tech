@@ -19,6 +19,7 @@ function PortalContent({ mac, router }) {
   const [payPhone, setPayPhone] = useState("");
   const [payProvider, setPayProvider] = useState("AIRTEL");
   const [selectedPkg, setSelectedPkg] = useState(null);
+  const [paySubmitting, setPaySubmitting] = useState(false);
 
   async function startHosted(pkg) {
     try {
@@ -62,6 +63,7 @@ function PortalContent({ mac, router }) {
 
   async function submitDirectPayment() {
     try {
+      setPaySubmitting(true);
       if (!payPhone) throw new Error("Phone number is required");
       if (!/^255\d{9}$/.test(String(payPhone)))
         throw new Error("Enter E.164 phone e.g., 255712345678");
@@ -76,11 +78,10 @@ function PortalContent({ mac, router }) {
           provider: payProvider.toUpperCase(),
         }),
       });
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
         throw new Error(j.message || "Payment start failed");
       }
-      const j = await res.json();
       try {
         if (j.orderReference && typeof window !== "undefined") {
           window.sessionStorage.setItem("lastOrderReference", j.orderReference);
@@ -94,6 +95,8 @@ function PortalContent({ mac, router }) {
       setAlertMsg(e.message || "Payment start failed");
       setAlertOpen(true);
       setLoading(false);
+    } finally {
+      setPaySubmitting(false);
     }
   }
 
@@ -160,6 +163,7 @@ function PortalContent({ mac, router }) {
                   value={payProvider}
                   onChange={(e) => setPayProvider(e.target.value)}
                   className="border rounded px-3 py-2"
+                  disabled={paySubmitting}
                 >
                   <option value="AIRTEL">Airtel Money</option>
                   <option value="MIX_BY_YASS">Mix by Yass</option>
@@ -176,6 +180,7 @@ function PortalContent({ mac, router }) {
                   onChange={(e) => setPayPhone(e.target.value)}
                   placeholder="255712345678"
                   className="border rounded px-3 py-2"
+                  disabled={paySubmitting}
                 />
               </label>
             </div>
@@ -183,18 +188,20 @@ function PortalContent({ mac, router }) {
               <button
                 className="px-4 py-2 border rounded"
                 onClick={() => {
+                  if (paySubmitting) return;
                   setPayModalOpen(false);
                   setSelectedPkg(null);
                 }}
+                disabled={paySubmitting}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-primary text-white rounded"
+                className="px-4 py-2 bg-primary text-white rounded disabled:opacity-60"
                 onClick={submitDirectPayment}
-                disabled={loading || !selectedPkg}
+                disabled={loading || !selectedPkg || paySubmitting}
               >
-                Pay
+                {paySubmitting ? "Sending USSD…" : "Pay"}
               </button>
             </div>
           </div>
