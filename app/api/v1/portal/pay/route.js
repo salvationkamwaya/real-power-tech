@@ -84,6 +84,15 @@ export async function POST(req) {
   const orderReference = newOrderReference();
   const currency = process.env.CLICKPESA_CURRENCY || "TZS";
 
+  console.log('[Pay API] Creating transaction:', {
+    orderReference,
+    packageId: pkg._id,
+    amount: pkg.price,
+    currency,
+    phoneNumber,
+    provider,
+  });
+
   await Transaction.create({
     servicePackageId: pkg._id,
     hotspotLocationId: hotspotLocationId || null,
@@ -97,26 +106,32 @@ export async function POST(req) {
   });
 
   // Step 1: Preview USSD-PUSH (validate availability)
+  console.log('[Pay API] Step 1: Preview USSD push...');
   try {
     await previewUssdPush({
       amount: String(pkg.price),
       currency,
       orderReference,
-      phoneNumber,
+      phoneNumber: String(phoneNumber),
       fetchSenderDetails,
     });
+    console.log('[Pay API] Preview successful');
   } catch (e) {
+    console.error('[Pay API] Preview failed:', e.message);
     return badRequest(`Preview failed: ${e.message}`);
   }
 
   // Step 2: Initiate USSD-PUSH
+  console.log('[Pay API] Step 2: Initiate USSD push...');
   try {
     const initResp = await initiateUssdPush({
       amount: String(pkg.price),
       currency,
       orderReference,
-      phoneNumber,
+      phoneNumber: String(phoneNumber),
     });
+
+    console.log('[Pay API] Initiate successful:', initResp);
 
     return json({
       orderReference,
@@ -126,6 +141,7 @@ export async function POST(req) {
       initResp,
     });
   } catch (e) {
+    console.error('[Pay API] Initiate failed:', e.message);
     return badRequest(`Initiate failed: ${e.message}`);
   }
 }
